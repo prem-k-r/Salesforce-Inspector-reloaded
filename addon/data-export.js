@@ -1,6 +1,6 @@
 /* global React ReactDOM */
 import {sfConn, apiVersion} from "./inspector.js";
-import {getLinkTarget, nullToEmptyString, isOptionEnabled, PromptTemplate, Constants, UserInfoModel, createSpinForMethod, copyToClipboard, downloadCsvFile, StorageHistory} from "./utils.js";
+import {getLinkTarget, nullToEmptyString, isOptionEnabled, PromptTemplate, Constants, UserInfoModel, createSpinForMethod, copyToClipboard, downloadCsvFile, downloadXlsxFile, StorageHistory} from "./utils.js";
 /* global initButton */
 import {Enumerable, DescribeInfo, initScrollTable, s} from "./data-load.js";
 import {PageHeader} from "./components/PageHeader.js";
@@ -14,6 +14,226 @@ function createQueryHistory(storageKey, max) {
     sortComparator: isSaved ? (a, b) => (a.query > b.query ? 1 : b.query > a.query ? -1 : 0) : null,
     addToFront: true
   });
+}
+
+function isEditableElement(element) {
+  if (!element || element.nodeType !== 1) {
+    return false;
+  }
+  const tagName = element.tagName;
+  return tagName === "INPUT"
+    || tagName === "TEXTAREA"
+    || tagName === "SELECT"
+    || element.isContentEditable
+    || element.closest("[contenteditable]") !== null;
+}
+
+function isVisibleElement(element) {
+  return element
+    && element.getClientRects().length > 0
+    && getComputedStyle(element).visibility !== "hidden";
+}
+
+// Maximum safe length for the encoded REST query URI. This includes the
+// entire request path (e.g. /services/data/.../?q=...), not just the SOQL
+// IN clause. A small buffer is reserved for sfConn.rest() cache-busting.
+const SOQL_QUERY_URL_SAFE_LENGTH = 12000;
+const REST_CACHE_BUSTER_LENGTH = 32;
+const SOQL_QUERY_METHODS = new Set(["query", "queryAll", "tooling/query"]);
+const MAX_HISTORY_QUERY_LENGTH = 8000;
+
+function isSoqlIdentifierCharacter(character) {
+  return character != null && /[A-Za-z0-9_]/.test(character);
+}
+
+function skipWhitespace(value, index) {
+  while (index < value.length && /\s/.test(value[index])) {
+    index++;
+  }
+  return index;
+}
+
+function skipSoqlString(value, startIndex) {
+  for (let index = startIndex + 1; index < value.length; index++) {
+    if (value[index] == "\\") {
+      index++;
+    } else if (value[index] == "'") {
+      // Supporting doubled quotes as well as SOQL's backslash escaping keeps
+      // the scanner from mistaking a quoted value for the end of the clause.
+      if (value[index + 1] == "'") {
+        index++;
+      } else {
+        return index + 1;
+      }
+    }
+  }
+  return -1;
+}
+
+function findClosingSoqlParenthesis(value, openingIndex) {
+  let depth = 1;
+  for (let index = openingIndex + 1; index < value.length; index++) {
+    if (value[index] == "'") {
+      index = skipSoqlString(value, index);
+      if (index == -1) {
+        return -1;
+      }
+      index--;
+    } else if (value[index] == "(") {
+      depth++;
+    } else if (value[index] == ")") {
+      depth--;
+      if (depth == 0) {
+        return index;
+      }
+    }
+  }
+  return -1;
+}
+
+function previousSoqlKeyword(value, index) {
+  index--;
+  while (index >= 0 && /\s/.test(value[index])) {
+    index--;
+  }
+  let endIndex = index + 1;
+  while (index >= 0 && isSoqlIdentifierCharacter(value[index])) {
+    index--;
+  }
+  return value.slice(index + 1, endIndex).toUpperCase();
+}
+
+function isSoqlKeywordAt(value, index, keyword) {
+  return value.slice(index, index + keyword.length).toUpperCase() == keyword
+    && !isSoqlIdentifierCharacter(value[index - 1])
+    && !isSoqlIdentifierCharacter(value[index + keyword.length]);
+}
+
+function findSingleSoqlInClause(value) {
+  let clause = null;
+  for (let index = 0; index < value.length; index++) {
+    if (value[index] == "'") {
+      index = skipSoqlString(value, index);
+      if (index == -1) {
+        return null;
+      }
+      index--;
+      continue;
+    }
+
+    if (!isSoqlKeywordAt(value, index, "IN")) {
+      continue;
+    }
+
+    let openingIndex = skipWhitespace(value, index + 2);
+    if (value[openingIndex] != "(") {
+      continue;
+    }
+
+    // Splitting NOT IN changes the meaning of the query, so leave it on the
+    // existing export path.
+    if (previousSoqlKeyword(value, index) == "NOT") {
+      return null;
+    }
+
+    let closingIndex = findClosingSoqlParenthesis(value, openingIndex);
+    if (closingIndex == -1 || clause != null) {
+      return null;
+    }
+    clause = {openingIndex, closingIndex};
+    index = closingIndex;
+  }
+  return clause;
+}
+
+function parseQuotedSoqlInValues(value, openingIndex, closingIndex) {
+  let values = [];
+  let index = openingIndex + 1;
+  while (index < closingIndex) {
+    index = skipWhitespace(value, index);
+    if (value[index] != "'") {
+      return null;
+    }
+
+    let valueEnd = skipSoqlString(value, index);
+    if (valueEnd == -1 || valueEnd > closingIndex) {
+      return null;
+    }
+    values.push(value.slice(index, valueEnd));
+
+    index = skipWhitespace(value, valueEnd);
+    if (index == closingIndex) {
+      return values;
+    }
+    if (value[index] != ",") {
+      return null;
+    }
+    index++;
+  }
+  return null;
+}
+
+function getSoqlQueryEndpoint(query, queryMethod) {
+  return "/services/data/v" + apiVersion + "/" + queryMethod + "/?q=" + encodeURIComponent(query);
+}
+
+function getSoqlRequestUrlLength(query, queryMethod, sfHost) {
+  return ("https://" + sfHost + getSoqlQueryEndpoint(query, queryMethod)).length + REST_CACHE_BUSTER_LENGTH;
+}
+
+function splitLargeSoqlInClause(query, queryMethod, sfHost) {
+  if (!/^\s*select\b/i.test(query)
+    || !SOQL_QUERY_METHODS.has(queryMethod)
+    || getSoqlRequestUrlLength(query, queryMethod, sfHost) <= SOQL_QUERY_URL_SAFE_LENGTH) {
+    return null;
+  }
+
+  let clause = findSingleSoqlInClause(query);
+  if (clause == null) {
+    return null;
+  }
+
+  let values = parseQuotedSoqlInValues(query, clause.openingIndex, clause.closingIndex);
+  if (values == null || values.length < 2) {
+    return null;
+  }
+
+  // IN semantics ignore duplicate literals. Removing exact duplicates prevents
+  // a record from being returned twice when a duplicate crosses a batch edge.
+  let seenValues = new Set();
+  values = values.filter(value => {
+    if (seenValues.has(value)) {
+      return false;
+    }
+    seenValues.add(value);
+    return true;
+  });
+
+  let makeQuery = batchValues => query.slice(0, clause.openingIndex + 1)
+    + batchValues.join(", ") + query.slice(clause.closingIndex);
+  let batches = [];
+  let currentBatch = [];
+  for (let value of values) {
+    let candidateBatch = currentBatch.concat(value);
+    let candidateQuery = makeQuery(candidateBatch);
+    if (getSoqlRequestUrlLength(candidateQuery, queryMethod, sfHost) <= SOQL_QUERY_URL_SAFE_LENGTH) {
+      currentBatch = candidateBatch;
+      continue;
+    }
+
+    if (currentBatch.length == 0) {
+      // One value alone cannot fit safely, so splitting cannot help.
+      return null;
+    }
+    batches.push(makeQuery(currentBatch));
+    currentBatch = [value];
+    if (getSoqlRequestUrlLength(makeQuery(currentBatch), queryMethod, sfHost) > SOQL_QUERY_URL_SAFE_LENGTH) {
+      return null;
+    }
+  }
+  batches.push(makeQuery(currentBatch));
+
+  return batches.length > 1 ? batches : null;
 }
 
 class Model {
@@ -260,7 +480,7 @@ class Model {
     this.describeInfo.reloadAll();
   }
   canCopy() {
-    return this.exportedData != null;
+    return this.exportedData != null && this.exportedData.table.length > 0;
   }
   canDelete() {
     //In order to allow deletion, we should have at least 1 element and the Id field should have been included in the query
@@ -279,8 +499,25 @@ class Model {
   }
   downloadAsCsv(){
     const csvContent = this.exportedData.csvSerialize(this.separator);
-    const filename = `${this.exportedData.records[0].attributes.type}-${new Date().toLocaleDateString()}.csv`;
+    const filename = `${this.exportedData.records[0]?.attributes.type}-${new Date().toLocaleDateString()}.csv`;
     downloadCsvFile(csvContent, filename);
+  }
+  canDownloadXlsx() {
+    if (!this.exportedData || this.exportedData.table.length === 0) {
+      return false;
+    }
+    const visibleTable = this.exportedData.getVisibleTable();
+    const rowCount = visibleTable.length;
+    const colCount = rowCount > 0 ? visibleTable[0].length : 0;
+    const totalCells = rowCount * colCount;
+    const MAX_CELLS = 2000000;
+    const MAX_EXCEL_ROWS = 1048576;
+    return totalCells <= MAX_CELLS && rowCount <= MAX_EXCEL_ROWS;
+  }
+  downloadAsXlsx() {
+    const rawData = this.exportedData.getXlsxData();
+    const filename = `${this.exportedData.records[0]?.attributes.type}-${new Date().toLocaleDateString()}.xlsx`;
+    downloadXlsxFile(rawData, filename);
   }
   deleteRecords(e) {
     let data = this.exportedData.csvSerialize(this.separator);
@@ -848,10 +1085,12 @@ class Model {
     vm.initPerf();
     let query = vm.enableQueryTypoFix ? vm.removeTypo(vm.queryInput.value) : vm.queryInput.value;
     vm.queryInput.value = query; // Update the input value with the cleaned query
-    function batchHandler(batch) {
+    let splitQueries = null;
+    let isSplitQueryExport = false;
+    function batchHandler(batch, batchNumber = 0, isFirstPage = true) {
       return batch.catch(err => {
         if (err.name == "AbortError") {
-          return {records: [], done: true, totalSize: -1};
+          return {records: [], done: true, totalSize: -1, aborted: true};
         }
         throw err;
       }).then(data => {
@@ -881,11 +1120,17 @@ class Model {
         let recs = exportedData.records.length;
         let total = exportedData.totalSize;
         if (data.totalSize != -1) {
-          exportedData.totalSize = isSoql ? data.totalSize : recs;
+          if (isSplitQueryExport && isSoql) {
+            if (isFirstPage) {
+              exportedData.totalSize = (exportedData.totalSize == -1 ? 0 : exportedData.totalSize) + data.totalSize;
+            }
+          } else {
+            exportedData.totalSize = isSoql ? data.totalSize : recs;
+          }
           total = exportedData.totalSize;
         }
         if (!data.done && isSoql) {
-          let pr = batchHandler(sfConn.rest(data.nextRecordsUrl, {progressHandler: vm.exportProgress}));
+          let pr = batchHandler(sfConn.rest(data.nextRecordsUrl, {progressHandler: vm.exportProgress}), batchNumber, false);
           vm.isWorking = true;
           vm.exportStatus = `Exporting... Completed ${recs} of ${total} record${s(total)}.`;
           vm.exportError = null;
@@ -895,7 +1140,42 @@ class Model {
           vm.didUpdate();
           return pr;
         }
-        vm.queryHistory.add({query, useToolingApi: exportedData.isTooling});
+        if (isSplitQueryExport && !data.aborted && batchNumber < splitQueries.length - 1) {
+          let nextBatchNumber = batchNumber + 1;
+          let nextEndpoint = getSoqlQueryEndpoint(splitQueries[nextBatchNumber], exportedData.queryMethod);
+          let pr = batchHandler(sfConn.rest(nextEndpoint, exportedData.params), nextBatchNumber);
+          vm.isWorking = true;
+          vm.exportStatus = `Exporting... Completed ${recs} of ${total} record${s(total)}.`;
+          vm.exportError = null;
+          vm.exportedData = exportedData;
+          vm.markPerf();
+          vm.updatedExportedData();
+          vm.didUpdate();
+          return pr;
+        }
+        try {
+          if (query.length <= MAX_HISTORY_QUERY_LENGTH) {
+            vm.queryHistory.add({ query, useToolingApi: exportedData.isTooling });
+          } else {
+            let historyQuery = query;
+            let clause = findSingleSoqlInClause(query);
+            if (clause != null) {
+              let values = parseQuotedSoqlInValues(query, clause.openingIndex, clause.closingIndex);
+              if (values != null && values.length > 1) {
+                historyQuery = query.slice(0, clause.openingIndex + 1)
+                  + values[0] + ", [+ " + (values.length - 1) + " more values]"
+                  + query.slice(clause.closingIndex);
+              }
+            }
+            if (historyQuery.length <= MAX_HISTORY_QUERY_LENGTH) {
+              vm.queryHistory.add({ query: historyQuery, useToolingApi: exportedData.isTooling });
+            }
+          }
+        } catch (e) {
+          if (e.name === "QuotaExceededError") {
+            console.warn("Query history is full. Skipping saving entry into history.");
+          }
+        }
         if (recs == 0) {
           vm.isWorking = false;
           vm.exportStatus = "No data exported." + (total > 0 ? ` ${total} record${s(total)}.` : "");
@@ -944,6 +1224,13 @@ class Model {
       });
     }
     this.setQueryMethod(exportedData, query, vm);
+    if (localStorage.getItem(Constants.AUTO_SPLIT_LARGE_IN_CLAUSES) == "true") {
+      splitQueries = splitLargeSoqlInClause(query, exportedData.queryMethod, sfConn.instanceHostname || vm.sfHost);
+      isSplitQueryExport = splitQueries != null;
+    }
+    if (isSplitQueryExport) {
+      this.setQueryMethod(exportedData, splitQueries[0], vm);
+    }
     vm.spinFor(batchHandler(sfConn.rest(exportedData.endpoint, exportedData.params))
       .catch(error => {
         console.error(error);
@@ -1254,6 +1541,18 @@ function RecordTable(vm) {
     }
   }
 
+  function cellToXlsxValue(cell) {
+    if (cell == null) {
+      return "";
+    } else if (typeof cell == "object") {
+      if (cell.attributes && cell.attributes.type) {
+        return "[" + cell.attributes.type + "]";
+      }
+      return "" + cell;
+    }
+    return cell; 
+  }
+
   let isVisible = (row, filter) => {
     // If no filter is applied, show all rows
     if (!filter) {
@@ -1300,7 +1599,7 @@ function RecordTable(vm) {
       }
       let filter = vm.resultsFilter;
       for (let record of expRecords) {
-        let row = new Array(header.length);
+        let row = new Array(header.length).fill(undefined);
         row[0] = record;
         rt.table.push(row);
         rt.rowVisibilities.push(isVisible(row, filter));
@@ -1308,6 +1607,7 @@ function RecordTable(vm) {
       }
     },
     csvSerialize: separator => rt.getVisibleTable().map(row => row.map(cell => "\"" + cellToString(cell).split("\"").join("\"\"") + "\"").join(separator)).join("\r\n"),
+    getXlsxData: () => rt.getVisibleTable().map(row => row.map(cell => cellToXlsxValue(cell))),
     updateVisibility() {
       let filter = vm.resultsFilter;
       let countOfVisibleRecords = 0;
@@ -1324,7 +1624,18 @@ function RecordTable(vm) {
     },
     updateColumnsVisibility() {
       if (rt.table.length > 1) {
-        rt.colVisibilities = rt.table[1].map(cell => !(typeof cell == "object" && cell !== null && vm.prefHideRelations));
+        let numCols = rt.table[1].length;
+        let isObjCol = new Array(numCols).fill(false);
+        for (let c = 0; c < numCols; c++) {
+          for (let r = 1; r < rt.table.length; r++) {
+            let cell = rt.table[r][c];
+            if (typeof cell == "object" && cell !== null) {
+              isObjCol[c] = true;
+              break;
+            }
+          }
+        }
+        rt.colVisibilities = isObjCol.map(isObj => !(isObj && vm.prefHideRelations));
       }
     },
     getVisibleTable() {
@@ -1368,9 +1679,11 @@ class App extends React.Component {
     this.onCopyAsExcel = this.onCopyAsExcel.bind(this);
     this.onCopyAsCsv = this.onCopyAsCsv.bind(this);
     this.onDownloadAsCsv = this.onDownloadAsCsv.bind(this);
+    this.onDownloadAsXlsx = this.onDownloadAsXlsx.bind(this);
     this.onCopyAsJson = this.onCopyAsJson.bind(this);
     this.onDeleteRecords = this.onDeleteRecords.bind(this);
     this.onResultsFilterInput = this.onResultsFilterInput.bind(this);
+    this.onFilterShortcutKeyDown = this.onFilterShortcutKeyDown.bind(this);
     this.onSetQueryName = this.onSetQueryName.bind(this);
     this.onStopExport = this.onStopExport.bind(this);
     this.state = {hideButtonsOption: JSON.parse(localStorage.getItem("hideExportButtonsOption")), isDropdownOpen: false};// Tracks whether the dropdown is open
@@ -1539,6 +1852,11 @@ class App extends React.Component {
     model.downloadAsCsv();
     model.didUpdate();
   }
+  onDownloadAsXlsx(){
+    let {model} = this.props;
+    model.downloadAsXlsx();
+    model.didUpdate();
+  }
   onCopyAsJson() {
     let {model} = this.props;
     model.copyAsJson();
@@ -1556,6 +1874,30 @@ class App extends React.Component {
       this.setState({isDropdownOpen: false});
     }
     model.didUpdate();
+  }
+  onFilterShortcutKeyDown(e) {
+    if (e.defaultPrevented) {
+      return;
+    }
+    const filterInput = this.refs.resultsFilter;
+    if (!isVisibleElement(filterInput) || document.activeElement === filterInput) {
+      return;
+    }
+
+    const isExplicitShortcut = (e.ctrlKey || e.metaKey)
+      && e.shiftKey
+      && !e.altKey
+      && (e.key || "").toLowerCase() === "f";
+    const isSlashShortcut = e.key === "/"
+      && !e.ctrlKey
+      && !e.altKey
+      && !e.metaKey
+      && !isEditableElement(e.target);
+
+    if (isExplicitShortcut || isSlashShortcut) {
+      e.preventDefault();
+      filterInput.focus();
+    }
   }
   onSetQueryName(e) {
     let {model} = this.props;
@@ -1715,6 +2057,20 @@ class App extends React.Component {
     let queryInput = this.refs.query;
     model.setQueryInput(queryInput);
     model.soqlPrompt = this.refs.prompt;
+
+    // Allow horizontal scrolling with the mouse wheel
+    let autocompleteResultsCont = this.refs.autocompleteResults;
+    if (autocompleteResultsCont) {
+      autocompleteResultsCont.addEventListener("wheel", (event) => {
+        if (autocompleteResultsCont.scrollWidth > autocompleteResultsCont.clientWidth) {
+          if (event.deltaY !== 0) {
+            event.preventDefault();
+            autocompleteResultsCont.scrollLeft += event.deltaY;
+          }
+        }
+      }, { passive: false });
+    }
+
     //Set the cursor focus on query text area
     if (localStorage.getItem("disableQueryInputAutoFocus") !== "true"){
       queryInput.focus();
@@ -1740,6 +2096,67 @@ class App extends React.Component {
         model.didUpdate();
       }
     });
+
+    function isSoqlLiteral(item) {
+      return (
+        /^'.*'$/.test(item) || // Single-quoted string literal
+        /^(true|false|null)$/i.test(item) || // Boolean/null
+        /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?$/.test(item) || // ISO date/datetime
+        /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(item) // STRICT Numeric literal (no commas, no leading zeros)
+      );
+    }
+
+    function toSoqlLiteral(item) {
+      if (/^(true|false|null)$/i.test(item)) return item; // Booleans and Null
+      if (/^-?(?:0|[1-9]\d*(?:,\d+)*)(?:\.\d+)?$/.test(item)) return item.replaceAll(",", ""); // Strict SOQL Numbers
+      if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?$/.test(item)) return item; // ISO Dates
+      return `'${item.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`; // Default: Treat as string (safely escaping backslashes and single quotes)
+    }
+
+    queryInput.addEventListener("paste", (e) => {
+      const isSmartPasteEnabled = localStorage.getItem("enableSmartPaste") !== "false";
+      if (!isSmartPasteEnabled) return;
+
+      const textBeforeCursor = queryInput.value.substring(0, queryInput.selectionStart);
+      const isInsideListClause = /\b(?:IN|EXCLUDES|INCLUDES)\s*\([^)]*$/i.test(textBeforeCursor);
+      if (!isInsideListClause) return;
+
+      const pasteData = (e.clipboardData || window.clipboardData).getData("text");
+      if (/^['"\s]+$/.test(pasteData)) return;
+      if (/^\s*SELECT\b/i.test(pasteData)) return;
+
+      const parsedTokens = (pasteData.match(/\s*'(?:\\'|[^'])*'\s*|[^,]+/g) || [])
+        .map(item => item.trim())
+        .filter(item => item.length > 0);
+      const isAlreadyFormatted = parsedTokens.length > 0 && parsedTokens.every(isSoqlLiteral);
+      if (isAlreadyFormatted) return;
+
+      let rawItems = pasteData
+        .split(/[\r\n\t]+/)
+        .map(item => item.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(item => item.length > 0);
+
+      rawItems = [...new Set(rawItems)]; // De-duplicate
+      let formattedList = rawItems.map(toSoqlLiteral).join(", ");
+
+      e.preventDefault();
+
+      let start = queryInput.selectionStart;
+      let end = queryInput.selectionEnd;
+      if (queryInput.value.substring(start - 1, start).match(/['"]/)) start--;
+      if (queryInput.value.substring(end, end + 1).match(/['"]/)) end++;
+      const textAfterCursor = queryInput.value.substring(end);
+      const hasClosingParen = /^[^(]*\)/.test(textAfterCursor);
+      if (!hasClosingParen) {
+        formattedList += ')';
+      }
+      queryInput.setRangeText(formattedList, start, end, "end");
+
+      model.updateCurrentTabQuery(queryInput.value);
+      model.queryAutocompleteHandler();
+      model.didUpdate();
+    });
+
     addEventListener("message", e => {
       if (e.data.command === "open-export-autocomplete") {
         model.queryAutocompleteHandler({ctrlSpace: true});
@@ -1757,6 +2174,7 @@ class App extends React.Component {
         model.didUpdate();
       }
     });
+    addEventListener("keydown", this.onFilterShortcutKeyDown);
 
     this.scrollTable = initScrollTable(this.refs.scroller);
     model.resultTableCallback = this.scrollTable.dataChange;
@@ -1781,6 +2199,9 @@ class App extends React.Component {
     addEventListener("resize", resize);
     resize();
   }
+  componentWillUnmount() {
+    removeEventListener("keydown", this.onFilterShortcutKeyDown);
+  }
   componentDidUpdate() {
     this.recalculateSize();
   }
@@ -1795,6 +2216,11 @@ class App extends React.Component {
   render() {
     let {model} = this.props;
     const perf = model.perfStatus();
+
+    const isMac = navigator.userAgentData?.platform === "macOS" || /Mac/.test(navigator.platform);
+    const filterShortcutTitle = isMac
+      ? "Filter export results (/ or ⌘⇧F)"
+      : "Filter export results (/ or Ctrl+Shift+F)";
 
     // Define utility items for this page (injected as "slots")
     const utilityItems = [
@@ -2010,14 +2436,14 @@ class App extends React.Component {
                     ))
                 ),
               ),
-              h("div", {className: "autocomplete-results slds-m-top_small"},
+              h("div", {className: "autocomplete-results slds-m-top_small", ref: "autocompleteResults"},
                 model.autocompleteResults.results.map(r => (
                   h("span", {className: "slds-pill slds-pill_link slds-m-vertical_xxx-small", key: r.value},
                     h("span", {className: "slds-pill__icon_container " + r.autocompleteType + " " + r.dataType},
                       h("span", {className: "sfir-autocomplete-icon"})
                     ),
                     h("a", {tabIndex: 0, title: r.title, onClick: e => { e.preventDefault(); model.autocompleteClick(r); model.didUpdate(); }, href: "#", className: "slds-pill__action slds-p-right_x-small"},
-                      h("span", {className: "slds-pill__label"}, r.value)
+                      h("span", {className: "slds-pill__label field-suggestions-label"}, r.value)
                     )
                   )))
               ),
@@ -2064,9 +2490,23 @@ class App extends React.Component {
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsCsv, title: "Copy exported data to clipboard for saving as a CSV file"}, "Copy (CSV)"),
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsJson, title: "Copy raw API output to clipboard"}, "Copy (JSON)"),
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onDownloadAsCsv, title: "Download as a CSV file"},
-                  h("svg", {className: "slds-button__icon"},
-                    h("use", {xlinkHref: "symbols.svg#download"})
-                  )
+                  h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#download"})), "CSV"
+                ),
+                h("button", {
+                  className: "slds-button slds-button_neutral", 
+                  disabled: !model.canCopy(), 
+                  onClick: (e) => { if (!model.canDownloadXlsx()) { e.preventDefault(); e.currentTarget.blur(); return; } this.onDownloadAsXlsx(); },
+                  style: (model.canCopy() && !model.canDownloadXlsx()) ? {color: "#c9c7c5", cursor: "not-allowed"} : {},
+                  title: (() => {
+                    if (!model.canCopy() || model.canDownloadXlsx()) return "Download as an XLSX file";
+                    const rowCount = model.exportedData ? model.exportedData.getVisibleTable().length : 0;
+                    const colCount = rowCount > 0 ? model.exportedData.getVisibleTable()[0].length : 0;
+                    return (rowCount > 1048576) 
+                      ? "Dataset exceeds Excel's row limit (> 1,048,576 rows). Use CSV instead." 
+                      : "Dataset is too large for XLSX (> 2M cells). Use CSV instead.";
+                  })()
+                },
+                  h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#download"})), "XLSX"
                 ),
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onPrefHideRelationsChange, title: `${model.prefHideRelations ? "Show" : "Hide"} Object Columns`},
                   h("svg", {className: `slds-button__icon ${model.prefHideRelations ? "" : "disabled"}`},
@@ -2079,7 +2519,10 @@ class App extends React.Component {
               model.exportedData && model.exportedData.table[0]?.length > 0 && !model.exportError ? h("div", {className: "slds-form-element"},
                 h("div", {className: "slds-form-element__control slds-input-has-icon slds-input-has-icon_left slds-m-left_small slds-button-group"},
                   h("input", {
+                    ref: "resultsFilter",
                     className: "slds-input slds-button slds-m-around_none",
+                    "aria-label": "Filter Result",
+                    title: filterShortcutTitle,
                     placeholder: model.filterColumns?.length > 0
                       ? `Filter by (${model.filterColumns.length})`
                       : "Filter",

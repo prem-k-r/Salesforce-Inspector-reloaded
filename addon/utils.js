@@ -27,6 +27,7 @@ export class Constants {
   static PRELOAD_SOBJECTS_BEFORE_POPUP = "preloadSobjectsBeforePopup";
   static ENABLE_SOBJECTS_LIST_CACHE = "enableSobjectsListCache";
   static ENABLE_RECENTLY_VIEWED_RECORDS = "enableRecentlyViewedRecords";
+  static AUTO_SPLIT_LARGE_IN_CLAUSES = "autoSplitLargeInClauses";
   static USER_SEARCH_EXCLUSIONS_KEY = "_userSearchExclusions";
   /** Shared definition for "Exclude users from search (org specific)" */
   static USER_SEARCH_EXCLUSIONS_CHECKBOXES = [
@@ -596,6 +597,31 @@ export function downloadCsvFile(csvContent, filename) {
 }
 
 /**
+ * Downloads data as an XLSX (Excel) file using SheetJS
+ * @param {Array<Array>} dataArray - 2D array of the table data
+ * @param {string} filename - The filename for the downloaded file
+ */
+export function downloadXlsxFile(dataArray, filename) {
+  if (typeof XLSX === 'undefined') {
+    console.error("SheetJS (xlsx) library is not loaded.");
+    return;
+  }
+
+  // Use a slight timeout so the main thread isn't immediately blocked.
+  // This allows the browser to register the button click visually.
+  setTimeout(() => {
+    try {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(dataArray);
+      XLSX.utils.book_append_sheet(wb, ws, "Exported Data");
+      XLSX.writeFile(wb, filename);
+    } catch (error) {
+      console.error("Error generating XLSX file:", error);
+    }
+  }, 100);
+}
+
+/**
  * Get the name field for a Salesforce object.
  * Checks the standard objects mapping first, then returns null to indicate
  * that the describe API should be used to determine the name field.
@@ -1117,6 +1143,9 @@ async function fetchSobjectsList(sfHost, currentFetch, cacheEnabled, cachedSobje
           isEverCreatable,
           newUrl,
           layoutable: layoutable || false,
+          createable: createable || false,
+          deletable: deletable || false,
+          updateable: updateable || false,
         };
         entityMap.set(name, entity);
       }

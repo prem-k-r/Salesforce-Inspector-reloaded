@@ -5,6 +5,16 @@
 - `Metadata Retrieve` Fix sort preference (`Sort metadata by`) not persisting due to misspelled localStorage key
 - `Popup` Add filter icon and menu on User tab search input [discussion #1147](https://github.com/tprouvot/Salesforce-Inspector-reloaded/discussions/1147)
 - `Event Monitor` Allow users to generate, publish and save Platform Events based on their definition
+- `Data Export` Add keyboard shortcuts to focus result filter (/ and Ctrl/Cmd+Shift+F) [#1222](https://github.com/tprouvot/Salesforce-Inspector-reloaded/pull/1222) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Import` Prompt to start new or continue previous import when pasted data contains previous results #1226 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Metadata` Fixed: Uploading or pasting a package.xml now correctly unlocks the "Retrieve Metadata" button, and the "Save status info" button now correctly downloads your activity logs instead of opening a file picker. #1228 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Popup` Fix search icon spacing on Objects/Shortcuts/Users tabs #1227 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Fix column shifting in data export when downloading/copying hiding object columns #1230 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Cache` Resolve "Unknown object" error for standard objects in Data Import and Field Explorer #1231 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Add "Download (XLSX)" functionality using SheetJS #1232 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Import` Add file upload support for data import #1234 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Option to automatically formats newline and tab-separated text into valid comma-separated lists when pasted into IN, EXCLUDES, or INCLUDES clauses #1241 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Option to automatically split and merge large SOQL IN clauses #1238 (contribution by [Prem Kumar](https://github.com/prem-k-r))
 
 ## Version 2.0
 

@@ -3907,14 +3907,6 @@ class AllDataSelection extends React.PureComponent {
       return this.getMetadataLink(durableId, "EventObjects");
     } else if (isCustomSetting) {
       return this.getMetadataLink(durableId, "CustomSettings");
-    } else if (sobjectName.endsWith("__c")) {
-      return (
-        "https://"
-        + this.props.sfHost
-        + "/lightning/setup/ObjectManager/"
-        + durableId
-        + "/Details/view"
-      );
     } else {
       return (
         "https://"
@@ -3933,14 +3925,6 @@ class AllDataSelection extends React.PureComponent {
       return this.getMetadataLink(durableId, "CustomMetadata");
     } else if (isCustomSetting) {
       return this.getMetadataLink(durableId, "CustomSettings");
-    } else if (sobjectName.endsWith("__c") || sobjectName.endsWith("__kav")) {
-      return (
-        "https://"
-        + this.props.sfHost
-        + "/lightning/setup/ObjectManager/"
-        + durableId
-        + "/FieldsAndRelationships/view"
-      );
     } else {
       return (
         "https://"
@@ -3981,24 +3965,14 @@ class AllDataSelection extends React.PureComponent {
       + "/ObjectAccess/view"
     );
   }
-  getRecordTypesLink(sfHost, sobjectName, durableId) {
-    if (sobjectName.endsWith("__c") || sobjectName.endsWith("__kav")) {
-      return (
-        "https://"
-        + sfHost
-        + "/lightning/setup/ObjectManager/"
-        + durableId
-        + "/RecordTypes/view"
-      );
-    } else {
-      return (
-        "https://"
-        + sfHost
-        + "/lightning/setup/ObjectManager/"
-        + sobjectName
-        + "/RecordTypes/view"
-      );
-    }
+  getRecordTypesLink(sfHost, sobjectName) {
+    return (
+      "https://"
+      + sfHost
+      + "/lightning/setup/ObjectManager/"
+      + sobjectName
+      + "/RecordTypes/view"
+    );
   }
   getObjectDocLink(sobject, api) {
     if (api === "toolingApi") {
@@ -4153,8 +4127,7 @@ class AllDataSelection extends React.PureComponent {
                           // TODO add check for record type support (such as custom metadata types and custom settings)
                           href: this.getRecordTypesLink(
                             sfHost,
-                            selectedValue.sobject.name,
-                            selectedValue.sobject.durableId
+                            selectedValue.sobject.name
                           ),
                           target: linkTarget,
                           onClick: handleLightningLinkClick,
@@ -4600,8 +4573,8 @@ class AllDataSearch extends React.PureComponent {
       "div",
       {
         className:
-          "input-with-dropdown slds-form-element__control slds-grow slds-input-has-icon slds-input-has-icon_left-right"
-          + (rightIcon ? " sfir-has-right-icon" : ""),
+          "input-with-dropdown slds-form-element__control slds-grow slds-input-has-icon "
+          + (rightIcon ? "slds-input-has-icon_left-right sfir-has-right-icon" : "slds-input-has-icon_right"),
       },
       h("input", {
         className: "slds-input sfir-font-size_11px",
