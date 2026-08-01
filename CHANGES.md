@@ -15,6 +15,7 @@
 - `Data Import` Add file upload support for data import #1234 (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Option to automatically formats newline and tab-separated text into valid comma-separated lists when pasted into IN, EXCLUDES, or INCLUDES clauses #1241 (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Option to automatically split and merge large SOQL IN clauses #1238 (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Add support for metadata record links in "View in Salesforce" #1242 (contribution by [Prem Kumar](https://github.com/prem-k-r))
 
 ## Version 2.0
 
@@ -28,7 +29,7 @@
 - `Data Export` Fix Column order not respected when performing subqueries [#598](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/598)
 - `Accessibility` Improve screen reader support: fix AlertBanner silent announcements, convert inspector button and tooltip trigger to semantic elements, add popup iframe title issues [#1107](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1107) & [#1108](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1108) (contribution by [akj](https://github.com/akj))
 - `Dependencies Explorer` (contribution by [Georgi Dobrishinov](https://github.com/dobrishinov))
-- `Flow Scanner` Extract Flow Scanner rules logic into shared module (fixes the Flow Scanner import flash on the Options page) contribution by [Camille Guillory](https://github.com/CamilleGuillory))
+- `Flow Scanner` Extract Flow Scanner rules logic into shared module (fixes the Flow Scanner import flash on the Options page) (contribution by [Camille Guillory](https://github.com/CamilleGuillory))
 - Introduce SObjectList cache to prevent request to Salesforce requests to be sent each time the popup opens [issue #437](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/437)
 - `Popup` Support record ID detection in Lightning Setup URLs with address parameter [feature 1099](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1099)
 - `Data Export` Fix Incorrect SOSL Query stamping when selected from Saved Queries [issue #1075](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1075) (contribution by [Divyanshu Bist](https://github.com/DivyanshuBist)
