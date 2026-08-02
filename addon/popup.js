@@ -4116,7 +4116,7 @@ class AllDataSelection extends React.PureComponent {
                     "Fields"
                   ),
                   selectedValue.sobject.recordTypesSupported?.recordTypeInfos
-                    ?.length > 0
+                    ?.length > 1
                     ? h(
                       "span",
                       {},
