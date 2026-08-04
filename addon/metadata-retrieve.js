@@ -1,9 +1,9 @@
-import {sfConn, apiVersion, XML} from "./inspector.js";
+import { sfConn, apiVersion, XML } from "./inspector.js";
 import Toast from "./components/Toast.js";
-import {PageHeader} from "./components/PageHeader.js";
-import {UserInfoModel, createSpinForMethod, copyToClipboard, generatePackageXml} from "./utils.js";
+import { PageHeader } from "./components/PageHeader.js";
+import { UserInfoModel, createSpinForMethod, copyToClipboard, generatePackageXml } from "./utils.js";
 import ConfirmModal from "./components/ConfirmModal.js";
-import {Spinner} from "./components/Spinner.js";
+import { Spinner } from "./components/Spinner.js";
 
 class Model {
   constructor(sfHost) {
@@ -76,7 +76,7 @@ class Model {
    */
   addCustomMetadataType(xmlName, suffix) {
     // Add to metadataTypeMap for suffix lookup
-    this.metadataTypeMap[xmlName] = {xmlName, suffix};
+    this.metadataTypeMap[xmlName] = { xmlName, suffix };
 
     // Add to metadataObjects array
     this.metadataObjects.push({
@@ -98,7 +98,7 @@ class Model {
         let metadataApi = sfConn.wsdl(apiVersion, "Metadata");
         let res = await logWait(
           "DescribeMetadata",
-          sfConn.soap(metadataApi, "describeMetadata", {apiVersion})
+          sfConn.soap(metadataApi, "describeMetadata", { apiVersion })
         );
         let availableMetadataObjects = res.metadataObjects;
 
@@ -107,7 +107,7 @@ class Model {
           this.metadataTypeMap[obj.xmlName] = obj;
         });
 
-        this.metadataObjects = availableMetadataObjects.map(obj => ({...obj, isFolder: false}));
+        this.metadataObjects = availableMetadataObjects.map(obj => ({ ...obj, isFolder: false }));
 
         // Add custom metadata types that are not returned by describeMetadata
         this.addCustomMetadataType("CustomField", "field");
@@ -128,14 +128,14 @@ class Model {
   }
 
   getDeploymentComponentsAndPackageXml(deployRequestId) {
-    sfConn.rest(`/services/data/v${apiVersion}/metadata/deployRequest/${deployRequestId}?includeDetails=true`, {method: "GET"}).then(res => {
+    sfConn.rest(`/services/data/v${apiVersion}/metadata/deployRequest/${deployRequestId}?includeDetails=true`, { method: "GET" }).then(res => {
       const groupedComponents = {};
       const metadataObjectsMap = {};
 
       let components = ("allComponentMessages" in res.deployResult.details) ? res.deployResult.details.allComponentMessages : res.deployResult.details.componentSuccesses;
 
       components.sort((a, b) => a.componentType < b.componentType ? -1 : a.componentType > b.componentType ? 1 : a.fullName < b.fullName ? -1 : a.fullName > b.fullName ? 1 : 0);
-      components.forEach(({componentType, fullName, fileName, problemType}) => {
+      components.forEach(({ componentType, fullName, fileName, problemType }) => {
         if (componentType && fullName && problemType != "Warning") {
           componentType = fileName.startsWith("settings") ? "Settings" : componentType;
 
@@ -153,7 +153,7 @@ class Model {
             };
             // Store in metadataTypeMap if not already present (for suffix lookup)
             if (!this.metadataTypeMap[componentType]) {
-              this.metadataTypeMap[componentType] = {xmlName: componentType, suffix: "xml"};
+              this.metadataTypeMap[componentType] = { xmlName: componentType, suffix: "xml" };
             }
           }
           metadataObjectsMap[componentType].childXmlNames.push({
@@ -210,7 +210,7 @@ class Model {
     try {
       let logWait = this.logWait.bind(this);
       let logMsg = msg => {
-        this.logMessages.push({level: "info", text: msg});
+        this.logMessages.push({ level: "info", text: msg });
         this.didUpdate();
       };
 
@@ -222,7 +222,7 @@ class Model {
       // Start Retrieve operation
       let result = await logWait(
         "Retrieve",
-        sfConn.soap(metadataApi, "retrieve", {retrieveRequest})
+        sfConn.soap(metadataApi, "retrieve", { retrieveRequest })
       );
 
       logMsg("(Id: " + result.id + ")");
@@ -234,7 +234,7 @@ class Model {
 
         res = await logWait(
           "CheckRetrieveStatus",
-          sfConn.soap(metadataApi, "checkRetrieveStatus", {id: result.id})
+          sfConn.soap(metadataApi, "checkRetrieveStatus", { id: result.id })
         );
 
         if (res.done !== "false") {
@@ -265,7 +265,7 @@ class Model {
 
       // Process the ZIP response
       let zipBin = Uint8Array.from(atob(res.zipFile), c => c.charCodeAt(0));
-      const blob = new Blob([zipBin], {type: "application/zip"});
+      const blob = new Blob([zipBin], { type: "application/zip" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "metadata.zip";
@@ -274,7 +274,7 @@ class Model {
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
 
-      this.statusLink = URL.createObjectURL(new Blob([statusJson], {type: "application/json"}));
+      this.statusLink = URL.createObjectURL(new Blob([statusJson], { type: "application/json" }));
       this.progress = "done";
       this.didUpdate();
     } catch (e) {
@@ -287,7 +287,7 @@ class Model {
   }
 
   logWait(msg, promise) {
-    let message = {level: "working", text: msg};
+    let message = { level: "working", text: msg };
     this.logMessages.push(message);
     this.didUpdate();
     promise.then(res => {
@@ -311,11 +311,11 @@ class Model {
     } else {
       msg = "(Error: " + err.message + ")";
     }
-    this.logMessages.push({level: "error", text: msg});
+    this.logMessages.push({ level: "error", text: msg });
     this.didUpdate();
   }
 
-  resetPackage(){
+  resetPackage() {
     this.generatePackageXml([]);
     this.didUpdate();
   }
@@ -324,13 +324,13 @@ class Model {
     const groupedComponents = {};
 
     components.forEach((parent) => {
-      parent.childXmlNames = parent.childXmlNames.length > 0 && parent.childXmlNames.filter(child => child.selected).length > 0 ? parent.childXmlNames : [{fullName: "*", selected: true}];
+      parent.childXmlNames = parent.childXmlNames.length > 0 && parent.childXmlNames.filter(child => child.selected).length > 0 ? parent.childXmlNames : [{ fullName: "*", selected: true }];
       if (parent.xmlName) {
         if (!groupedComponents[parent.xmlName]) {
           groupedComponents[parent.xmlName] = new Set();
         }
         parent.childXmlNames.forEach((child) => {
-          if (child.childXmlNames && child.childXmlNames.length > 0){
+          if (child.childXmlNames && child.childXmlNames.length > 0) {
             child.childXmlNames?.forEach((grandchild) => {
               if (grandchild.selected) {
                 groupedComponents[parent.xmlName].add(grandchild.fullName);
@@ -567,7 +567,7 @@ class App extends React.Component {
       packageXml.removeEventListener("paste", this.onPastePackage);
     }
   }
-  componentDidUpdate(){
+  componentDidUpdate() {
     if (window.Prism) {
       window.Prism.highlightAll();
     }
@@ -584,7 +584,7 @@ class App extends React.Component {
     }
   }
   onSelectAllChange(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     let checked = e.target.checked;
     model.allSelected = checked;
     model.metadataObjects.forEach(metadataObject => {
@@ -601,7 +601,7 @@ class App extends React.Component {
         }
       });
     });
-    if (checked){
+    if (checked) {
       model.generatePackageXml(model.metadataObjects);
     } else {
       model.resetPackage();
@@ -609,13 +609,13 @@ class App extends React.Component {
     model.didUpdate();
   }
   onStartClick() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.spinnerCount++;
     model.startDownloading();
   }
-  downloadXml(){
-    let {model} = this.props;
-    const blob = new Blob([model.packageXml], {type: "text/xml"});
+  downloadXml() {
+    let { model } = this.props;
+    const blob = new Blob([model.packageXml], { type: "text/xml" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "package.xml";
@@ -623,17 +623,17 @@ class App extends React.Component {
     a.click();
     document.body.removeChild(a);
   }
-  copyXml(){
-    let {model} = this.props;
+  copyXml() {
+    let { model } = this.props;
     copyToClipboard(model.packageXml);
   }
-  showOptions(){
-    let {model} = this.props;
+  showOptions() {
+    let { model } = this.props;
     model.showOptions = !model.showOptions;
     model.didUpdate();
   }
-  onImportPackage(){
-    let {model} = this.props;
+  onImportPackage() {
+    let { model } = this.props;
     const fileInput = this.refs.fileInput;
 
     if (!fileInput.files.length) {
@@ -791,21 +791,21 @@ class App extends React.Component {
       });
     }
   }
-  onPastePackage(e){
-    let {model} = this.props;
+  onPastePackage(e) {
+    let { model } = this.props;
     let clipText = e.clipboardData.getData("text/plain");
     model.packageXml = clipText;
     model.parsePackageXml(clipText);
     model.didUpdate();
   }
-  onUpdateManagedPackageSelection(e){
-    let {model} = this.props;
+  onUpdateManagedPackageSelection(e) {
+    let { model } = this.props;
     model.includeManagedPackage = e.target.checked;
     localStorage.setItem("includeManagedMetadata", model.includeManagedPackage);
     model.didUpdate();
   }
   onUpdateDeployOptions(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     const key = e.target.name || e.target.id;
     if (key && model.deployOptions.hasOwnProperty(key)) {
       model.deployOptions[key] = e.target.checked;
@@ -814,7 +814,7 @@ class App extends React.Component {
     }
   }
   onMetadataFilterInput(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     if (model.metadataObjects) {
       model.metadataFilter = e.target.value.toLowerCase();
 
@@ -850,7 +850,7 @@ class App extends React.Component {
 
   onClearAndFocusFilter(e) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.metadataFilter = "";
     model.metadataObjects = model.metadataObjects.map(metadataObject => ({
       ...metadataObject,
@@ -860,8 +860,8 @@ class App extends React.Component {
     model.didUpdate();
   }
   hideToast() {
-    let {model} = this.props;
-    this.setState({showToast: false, toastMessage: ""});
+    let { model } = this.props;
+    this.setState({ showToast: false, toastMessage: "" });
     model.didUpdate();
   }
   getLanguageForMetadata(metadataType) {
@@ -871,7 +871,7 @@ class App extends React.Component {
     return "markup"; // default
   }
   async onViewMetadata(metadataType, metadataName) {
-    let {model} = this.props;
+    let { model } = this.props;
     this.setState({
       showMetadataModal: true,
       metadataXmlContent: "Loading...",
@@ -917,12 +917,12 @@ class App extends React.Component {
     this.props.model.didUpdate();
   }
   onCopyMetadataXml() {
-    const {metadataXmlContent} = this.state;
+    const { metadataXmlContent } = this.state;
     if (!metadataXmlContent || metadataXmlContent === "Loading..." || metadataXmlContent.startsWith("Error")) {
       return;
     }
     copyToClipboard(metadataXmlContent);
-    let {model} = this.props;
+    let { model } = this.props;
     this.setState({
       showToast: true,
       toastMessage: "Metadata copied to clipboard",
@@ -933,11 +933,11 @@ class App extends React.Component {
     model.didUpdate();
   }
   onDownloadMetadataXml() {
-    const {metadataXmlContent, metadataFileName, metadataType} = this.state;
+    const { metadataXmlContent, metadataFileName, metadataType } = this.state;
     if (!metadataXmlContent || metadataXmlContent === "Loading..." || metadataXmlContent.startsWith("Error")) {
       return;
     }
-    let {model} = this.props;
+    let { model } = this.props;
 
     // Get file extension from metadata type suffix
     let fileExtension = "xml"; // default fallback
@@ -954,7 +954,7 @@ class App extends React.Component {
       mimeType = "text/html";
     }
 
-    const blob = new Blob([metadataXmlContent], {type: mimeType});
+    const blob = new Blob([metadataXmlContent], { type: mimeType });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = (metadataFileName || "metadata") + "." + fileExtension;
@@ -964,7 +964,7 @@ class App extends React.Component {
     URL.revokeObjectURL(a.href);
   }
   render() {
-    let {model} = this.props;
+    let { model } = this.props;
     document.title = model.title();
     return (
       h("div", {},
@@ -987,8 +987,8 @@ class App extends React.Component {
           confirmIconName: "symbols.svg#download",
           cancelLabel: "Close",
           modalSize: "large",
-          children: h("div", {className: "slds-scrollable_y"},
-            h("pre", {className: "reset-margin"},
+          children: h("div", { className: "slds-scrollable_y" },
+            h("pre", { className: "reset-margin" },
               h("code", {
                 id: "metadata-xml-content",
                 className: "language-" + (this.getLanguageForMetadata(this.state.metadataType))
@@ -999,10 +999,10 @@ class App extends React.Component {
         h(PageHeader, {
           pageTitle: model.title(),
           subTitle: model.progress == "ready" ? "Ready"
-          : model.progress == "working" ? "Retrieving metadata..."
-          : model.progress == "deploying" ? "Deploying metadata..."
-          : model.progress == "done" ? "Finished"
-          : "Error!",
+            : model.progress == "working" ? "Retrieving metadata..."
+              : model.progress == "deploying" ? "Deploying metadata..."
+                : model.progress == "done" ? "Finished"
+                  : "Error!",
           orgName: model.orgName,
           sfLink: model.sfLink,
           sfHost: model.sfHost,
@@ -1013,12 +1013,12 @@ class App extends React.Component {
         && h("div", {
           className: "sfir-spinner-overlay"
         },
-        h(Spinner, {
-          size: "large",
-          type: "brand",
-          text: model.progress == "working" ? "Retrieving metadata..." : (model.progress == "deploying" ? "Deploying metadata..." : "Loading..."),
-          centered: false
-        })
+          h(Spinner, {
+            size: "large",
+            type: "brand",
+            text: model.progress == "working" ? "Retrieving metadata..." : (model.progress == "deploying" ? "Deploying metadata..." : "Loading..."),
+            centered: false
+          })
         ),
         h("div", {
           className: "slds-m-top_xx-large",
@@ -1028,167 +1028,167 @@ class App extends React.Component {
             height: "calc(100vh - 4rem)"
           }
         },
-        h("div", {className: "area", id: "result-area"},
-          h("div", {className: "result-bar"},
-            h("h1", {className: "slds-text-title_bold"}, "Metadata"),
-            h("div", {className: "filter-box"},
-              h("svg", {className: "filter-icon"},
-                h("use", {xlinkHref: "symbols.svg#search"})
-              ),
-              h("input", {className: "filter-input", disabled: model.metadataObjects?.length == 0, placeholder: "Filter", value: model.metadataFilter, onChange: this.onMetadataFilterInput, ref: "metadataFilter"}),
-              h("a", {href: "about:blank", className: "filter-clear", title: "Clear filter", onClick: this.onClearAndFocusFilter},
-                h("svg", {className: "filter-clear-icon"},
-                  h("use", {xlinkHref: "symbols.svg#clear"})
+          h("div", { className: "area", id: "result-area" },
+            h("div", { className: "result-bar" },
+              h("h1", { className: "slds-text-title_bold" }, "Metadata"),
+              h("div", { className: "filter-box" },
+                h("svg", { className: "filter-icon" },
+                  h("use", { xlinkHref: "symbols.svg#search" })
+                ),
+                h("input", { className: "filter-input", disabled: model.metadataObjects?.length == 0, placeholder: "Filter", value: model.metadataFilter, onChange: this.onMetadataFilterInput, ref: "metadataFilter" }),
+                h("a", { href: "about:blank", className: "filter-clear", title: "Clear filter", onClick: this.onClearAndFocusFilter },
+                  h("svg", { className: "filter-clear-icon" },
+                    h("use", { xlinkHref: "symbols.svg#clear" })
+                  )
                 )
-              )
-            ),
-            h("label", {className: "slds-checkbox_toggle max-width-small"},
-              h("input", {type: "checkbox", checked: model.allSelected, onChange: this.onSelectAllChange}),
-              h("span", {className: "slds-checkbox_faux_container center-label"},
-                h("span", {className: "slds-checkbox_faux"}),
-                h("span", {className: "slds-checkbox_on"}, "Unselect all"),
-                h("span", {className: "slds-checkbox_off"}, "Select all"),
-              )
-            ),
-            h("label", {className: "slds-checkbox_toggle max-width-small"},
-              h("input", {type: "checkbox", required: true, "aria-describedby": "toggle-namespace", className: "slds-input", checked: model.includeManagedPackage, onChange: this.onUpdateManagedPackageSelection}),
-              h("span", {className: "slds-checkbox_faux_container center-label"},
-                h("span", {className: "slds-checkbox_faux"}),
-                h("span", {className: "slds-checkbox_on"}, "Managed packages included"),
-                h("span", {className: "slds-checkbox_off"}, "Managed packages excluded"),
-              )
-            ),
-            h("div", {className: "flex-right"},
-              h("button", {
-                onClick: this.onStartClick,
-                disabled: !model.deployRequestId && (!model.metadataObjects || !model.metadataObjects.some(obj => obj.selected))
-              }, "Retrieve Metadata"),
-              model.statusLink ? h("button", {
-                className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small",
-                onClick: () => {
-                  const a = document.createElement("a");
-                  a.href = model.statusLink;
-                  a.download = "status_info.json";
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
+              ),
+              h("label", { className: "slds-checkbox_toggle max-width-small" },
+                h("input", { type: "checkbox", checked: model.allSelected, onChange: this.onSelectAllChange }),
+                h("span", { className: "slds-checkbox_faux_container center-label" },
+                  h("span", { className: "slds-checkbox_faux" }),
+                  h("span", { className: "slds-checkbox_on" }, "Unselect all"),
+                  h("span", { className: "slds-checkbox_off" }, "Select all"),
+                )
+              ),
+              h("label", { className: "slds-checkbox_toggle max-width-small" },
+                h("input", { type: "checkbox", required: true, "aria-describedby": "toggle-namespace", className: "slds-input", checked: model.includeManagedPackage, onChange: this.onUpdateManagedPackageSelection }),
+                h("span", { className: "slds-checkbox_faux_container center-label" },
+                  h("span", { className: "slds-checkbox_faux" }),
+                  h("span", { className: "slds-checkbox_on" }, "Managed packages included"),
+                  h("span", { className: "slds-checkbox_off" }, "Managed packages excluded"),
+                )
+              ),
+              h("div", { className: "flex-right" },
+                h("button", {
+                  onClick: this.onStartClick,
+                  disabled: !model.deployRequestId && (!model.metadataObjects || !model.metadataObjects.some(obj => obj.selected))
+                }, "Retrieve Metadata"),
+                model.statusLink ? h("button", {
+                  className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small",
+                  onClick: () => {
+                    const a = document.createElement("a");
+                    a.href = model.statusLink;
+                    a.download = "status_info.json";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  },
+                  title: "Save status info"
                 },
-                title: "Save status info"
-              },
-                h("svg", {className: "slds-button__icon"},
-                  h("use", {xlinkHref: "symbols.svg#info"})
-                )
-              ) : null,
-              h("button", {className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.downloadXml(), title: "Download package.xml"},
-                h("svg", {className: "slds-button__icon"},
-                  h("use", {xlinkHref: "symbols.svg#download"})
-                )
-              ),
-              h("button", {className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.refs.fileInput.click(), title: "Import package.xml or package zip file"},
-                h("svg", {className: "slds-button__icon"},
-                  h("use", {xlinkHref: "symbols.svg#upload"})
-                )
-              ),
-              h("button", {className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.copyXml(), title: "Copy package.xml"},
-                h("svg", {className: "slds-button__icon"},
-                  h("use", {xlinkHref: "symbols.svg#copy"})
-                )
-              ),
-              h("button", {className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.showOptions(), title: "Display Deployment Settings"},
-                h("svg", {className: "slds-button__icon"},
-                  h("use", {xlinkHref: "symbols.svg#settings"})
-                )
-              ),
-              h("input", {
-                type: "file",
-                style: {display: "none"},
-                ref: "fileInput",
-                onChange: this.onImportPackage,
-                accept: "text/xml,.xml,application/zip,.zip"
-              })
-            )
-          ),
-          model.showOptions && h("div", {className: "options-text"},
-            h("h2", {className: "slds-text-title_bold slds-col slds-size_1-of-1"}, "Deployment Settings"),
-            h("div", {className: "slds-grid slds-grid_align-spread slds-wrap"},
-              Object.entries(model.deployOptions)
-                .filter(([_, value]) => typeof value === "boolean")
-                .map(([key, value]) =>
-                  h("div", {className: "slds-col slds-size_1-of-9 slds-p-around_x-small", key},
-                    h("label", {className: "slds-checkbox_toggle max-width-small"},
-                      h("span", {className: "slds-form-element__label slds-m-bottom_none"}, key.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase())),
-                      h("input", {type: "checkbox", name: key, checked: value, onChange: this.onUpdateDeployOptions}),
-                      h("span", {className: "slds-checkbox_faux_container center-label"},
-                        h("span", {className: "slds-checkbox_faux"}),
-                        h("span", {className: "slds-checkbox_on"}, "Enabled"),
-                        h("span", {className: "slds-checkbox_off"}, "Disabled"),
+                  h("svg", { className: "slds-button__icon" },
+                    h("use", { xlinkHref: "symbols.svg#info" })
+                  )
+                ) : null,
+                h("button", { className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.downloadXml(), title: "Download package.xml" },
+                  h("svg", { className: "slds-button__icon" },
+                    h("use", { xlinkHref: "symbols.svg#download" })
+                  )
+                ),
+                h("button", { className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.refs.fileInput.click(), title: "Import package.xml or package zip file" },
+                  h("svg", { className: "slds-button__icon" },
+                    h("use", { xlinkHref: "symbols.svg#upload" })
+                  )
+                ),
+                h("button", { className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.copyXml(), title: "Copy package.xml" },
+                  h("svg", { className: "slds-button__icon" },
+                    h("use", { xlinkHref: "symbols.svg#copy" })
+                  )
+                ),
+                h("button", { className: "slds-button slds-button_icon slds-button_icon-border-filled slds-m-left_x-small", onClick: () => this.showOptions(), title: "Display Deployment Settings" },
+                  h("svg", { className: "slds-button__icon" },
+                    h("use", { xlinkHref: "symbols.svg#settings" })
+                  )
+                ),
+                h("input", {
+                  type: "file",
+                  style: { display: "none" },
+                  ref: "fileInput",
+                  onChange: this.onImportPackage,
+                  accept: "text/xml,.xml,application/zip,.zip"
+                })
+              )
+            ),
+            model.showOptions && h("div", { className: "options-text" },
+              h("h2", { className: "slds-text-title_bold slds-col slds-size_1-of-1" }, "Deployment Settings"),
+              h("div", { className: "slds-grid slds-grid_align-spread slds-wrap" },
+                Object.entries(model.deployOptions)
+                  .filter(([_, value]) => typeof value === "boolean")
+                  .map(([key, value]) =>
+                    h("div", { className: "slds-col slds-size_1-of-9 slds-p-around_x-small", key },
+                      h("label", { className: "slds-checkbox_toggle max-width-small" },
+                        h("span", { className: "slds-form-element__label slds-m-bottom_none" }, key.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase())),
+                        h("input", { type: "checkbox", name: key, checked: value, onChange: this.onUpdateDeployOptions }),
+                        h("span", { className: "slds-checkbox_faux_container center-label" },
+                          h("span", { className: "slds-checkbox_faux" }),
+                          h("span", { className: "slds-checkbox_on" }, "Enabled"),
+                          h("span", { className: "slds-checkbox_off" }, "Disabled"),
+                        )
                       )
                     )
                   )
-                )
-            ),
-            h("div", {className: "slds-grid slds-grid_align-spread"},
-              h("div", {className: "slds-col slds-size_1-of-4 slds-p-around_x-small"},
-                h("label", {className: "slds-form-element__label"}, "Test Level"),
-                h("div", {className: "slds-form-element__control"},
-                  h("select", {
-                    className: "slds-select",
-                    value: model.deployOptions.testLevel,
-                    onChange: (e) => {
-                      model.deployOptions.testLevel = e.target.value;
-                      if (e.target.value === "RunSpecifiedTests") {
-                        setTimeout(() => {
-                          const specifiedTestsInput = document.querySelector('input[placeholder="Comma-separated test class names"]');
-                          if (specifiedTestsInput) {
-                            specifiedTestsInput.focus();
-                          }
-                        }, 0);
-                      }
-                      model.didUpdate();
-                    }
-                  },
-                  h("option", {value: "NoTestRun"}, "No Test Run"),
-                  h("option", {value: "RunSpecifiedTests"}, "Run Specified Tests"),
-                  h("option", {value: "RunLocalTests"}, "Run Local Tests"),
-                  h("option", {value: "RunAllTestsInOrg"}, "Run All Tests in Org")
-                  )
-                )
               ),
-              model.deployOptions.testLevel === "RunSpecifiedTests" && h("div", {className: "slds-col slds-size_3-of-4 slds-p-around_x-small"},
-                h("label", {className: "slds-form-element__label"}, "Specified Tests"),
-                h("div", {className: "slds-form-element__control"},
-                  h("input", {
-                    type: "text",
-                    className: "slds-input",
-                    placeholder: "Comma-separated test class names",
-                    value: model.deployOptions.runTests || "",
-                    onChange: (e) => {
-                      model.deployOptions.runTests = e.target.value;
-                      model.didUpdate();
-                    }
-                  })
-                )
-              )
-            )
-          ),
-          h("div", {id: "result-table", ref: "scroller"},
-            model.metadataObjects
-              ? h("div", {className: "result slds-grid"},
-                h("div", {className: "slds-col"},
-                  h("br", {}),
-                  h("ul", {className: "slds-accordion"},
-                    model.metadataObjects.map(metadataObject => h(ObjectSelector, {metadataObject, model, onViewMetadata: this.onViewMetadata, key: metadataObject.xmlName}))),
-                  !model.deployRequestId ? h("p", {}, "Select what to download above, and then click the button below. If downloading fails, try unchecking some of the boxes.") : null
+              h("div", { className: "slds-grid slds-grid_align-spread" },
+                h("div", { className: "slds-col slds-size_1-of-4 slds-p-around_x-small" },
+                  h("label", { className: "slds-form-element__label" }, "Test Level"),
+                  h("div", { className: "slds-form-element__control" },
+                    h("select", {
+                      className: "slds-select",
+                      value: model.deployOptions.testLevel,
+                      onChange: (e) => {
+                        model.deployOptions.testLevel = e.target.value;
+                        if (e.target.value === "RunSpecifiedTests") {
+                          setTimeout(() => {
+                            const specifiedTestsInput = document.querySelector('input[placeholder="Comma-separated test class names"]');
+                            if (specifiedTestsInput) {
+                              specifiedTestsInput.focus();
+                            }
+                          }, 0);
+                        }
+                        model.didUpdate();
+                      }
+                    },
+                      h("option", { value: "NoTestRun" }, "No Test Run"),
+                      h("option", { value: "RunSpecifiedTests" }, "Run Specified Tests"),
+                      h("option", { value: "RunLocalTests" }, "Run Local Tests"),
+                      h("option", { value: "RunAllTestsInOrg" }, "Run All Tests in Org")
+                    )
+                  )
                 ),
-                h("div", {className: "slds-col"},
-                  h("pre", {className: "reset-margin"},
-                    h("code", {id: "packageXml", className: "language-markup"}, model.packageXml)
+                model.deployOptions.testLevel === "RunSpecifiedTests" && h("div", { className: "slds-col slds-size_3-of-4 slds-p-around_x-small" },
+                  h("label", { className: "slds-form-element__label" }, "Specified Tests"),
+                  h("div", { className: "slds-form-element__control" },
+                    h("input", {
+                      type: "text",
+                      className: "slds-input",
+                      placeholder: "Comma-separated test class names",
+                      value: model.deployOptions.runTests || "",
+                      onChange: (e) => {
+                        model.deployOptions.runTests = e.target.value;
+                        model.didUpdate();
+                      }
+                    })
                   )
                 )
               )
-              : h("div", {}, model.logMessages.map(({level, text}, index) => h("div", {key: index, className: "log-" + level}, text)))
+            ),
+            h("div", { id: "result-table", ref: "scroller" },
+              model.metadataObjects
+                ? h("div", { className: "result slds-grid" },
+                  h("div", { className: "slds-col" },
+                    h("br", {}),
+                    h("ul", { className: "slds-accordion" },
+                      model.metadataObjects.map(metadataObject => h(ObjectSelector, { metadataObject, model, onViewMetadata: this.onViewMetadata, key: metadataObject.xmlName }))),
+                    !model.deployRequestId ? h("p", {}, "Select what to download above, and then click the button below. If downloading fails, try unchecking some of the boxes.") : null
+                  ),
+                  h("div", { className: "slds-col" },
+                    h("pre", { className: "reset-margin" },
+                      h("code", { id: "packageXml", className: "language-markup" }, model.packageXml)
+                    )
+                  )
+                )
+                : h("div", {}, model.logMessages.map(({ level, text }, index) => h("div", { key: index, className: "log-" + level }, text)))
+            )
           )
-        )
         )
       )
     );
@@ -1210,10 +1210,10 @@ class ObjectSelector extends React.Component {
     };
   }
   onMouseEnter(item) {
-    this.setState({hoveredItem: item});
+    this.setState({ hoveredItem: item });
   }
   onMouseLeave() {
-    this.setState({hoveredItem: null});
+    this.setState({ hoveredItem: null });
   }
   onViewMetadataClick(e, metadataType, metadataName) {
     e.stopPropagation();
@@ -1222,11 +1222,11 @@ class ObjectSelector extends React.Component {
     }
   }
   onChange(e) {
-    let {metadataObject, model} = this.props;
+    let { metadataObject, model } = this.props;
     metadataObject.selected = e.target.checked;
     metadataObject.indeterminate = false;
     metadataObject.wildcard = !metadataObject.expanded;
-    if (metadataObject.expanded){
+    if (metadataObject.expanded) {
       metadataObject.childXmlNames.forEach(child => {
         child.selected = metadataObject.selected;
         child.indeterminate = false;
@@ -1242,9 +1242,9 @@ class ObjectSelector extends React.Component {
     model.generatePackageXml(model.metadataObjects.filter(metadataObject => metadataObject.selected));
     model.didUpdate();
   }
-  onSelectChild(child, e){
-    let {model} = this.props;
-    if (child.isFolder){
+  onSelectChild(child, e) {
+    let { model } = this.props;
+    if (child.isFolder) {
       // If clicking on the checkbox input itself, toggle selection
       if (e.target.nodeName === "INPUT") {
         child.selected = !child.selected;
@@ -1284,7 +1284,7 @@ class ObjectSelector extends React.Component {
       model.didUpdate();
     }
 
-    if (e.target.nodeName != "INPUT"){
+    if (e.target.nodeName != "INPUT") {
       e.preventDefault();
     }
   }
@@ -1300,7 +1300,7 @@ class ObjectSelector extends React.Component {
 
     const selectedChildren = parent.childXmlNames.filter(child => child.selected || child.indeterminate);
     const allSelected = selectedChildren.length === parent.childXmlNames.length
-                       && parent.childXmlNames.every(child => child.selected && !child.indeterminate);
+      && parent.childXmlNames.every(child => child.selected && !child.indeterminate);
 
     if (selectedChildren.length === 0) {
       // No children selected
@@ -1316,13 +1316,13 @@ class ObjectSelector extends React.Component {
       parent.indeterminate = true;
     }
   }
-  getMetaFolderProof(metadataObject){
-    if (metadataObject.xmlName == "Report" && !metadataObject.isFolder){
-      return {xmlName: "ReportFolder", directoryName: "*"};
-    } else if ((metadataObject.xmlName == "Dashboard" || metadataObject.xmlName == "Document") && !metadataObject.isFolder){
-      return {xmlName: metadataObject.xmlName + "Folder"};
-    } else if (metadataObject.xmlName == "EmailTemplate" && !metadataObject.isFolder){
-      return {xmlName: "EmailFolder"};
+  getMetaFolderProof(metadataObject) {
+    if (metadataObject.xmlName == "Report" && !metadataObject.isFolder) {
+      return { xmlName: "ReportFolder", directoryName: "*" };
+    } else if ((metadataObject.xmlName == "Dashboard" || metadataObject.xmlName == "Document") && !metadataObject.isFolder) {
+      return { xmlName: metadataObject.xmlName + "Folder" };
+    } else if (metadataObject.xmlName == "EmailTemplate" && !metadataObject.isFolder) {
+      return { xmlName: "EmailFolder" };
     } else {
       return metadataObject;
     }
@@ -1333,7 +1333,7 @@ class ObjectSelector extends React.Component {
    * @param {string} metaType - The metadata type XML name
    * @returns {boolean} - True if this metadata type should use REST API query
    */
-  shouldUseRestApiForList(metaType){
+  shouldUseRestApiForList(metaType) {
     // List of metadata types that require REST API query for listing
     const restApiTypes = ["ApprovalProcess"];
     return restApiTypes.includes(metaType);
@@ -1347,7 +1347,7 @@ class ObjectSelector extends React.Component {
    * @param {string} params.objectName - Object name to query (e.g., "ProcessDefinition")
    * @returns {Promise<Array>} - Array of metadata items
    */
-  async queryMetadataViaRest({metaName, folderName, objectName}){
+  async queryMetadataViaRest({ metaName, folderName, objectName }) {
     const query = `SELECT ${metaName}, ${folderName} FROM ${objectName}`;
     const allRecords = [];
     let queryUrl = `/services/data/v${apiVersion}/query/?q=` + encodeURIComponent(query);
@@ -1371,7 +1371,7 @@ class ObjectSelector extends React.Component {
    * @param {string} metaNameField - Field name that contains the metadata name (e.g., "DeveloperName")
    * @param {string} folderNameField - Field name that contains the folder/object name (e.g., "TableEnumOrId")
    */
-  buildChildMetadataFromRest(model, meta, records, metaNameField, folderNameField){
+  buildChildMetadataFromRest(model, meta, records, metaNameField, folderNameField) {
     meta.childXmlNames = []; // Reset children
 
     records.forEach(record => {
@@ -1402,17 +1402,17 @@ class ObjectSelector extends React.Component {
     meta.childXmlNames.sort((a, b) => a[model.sortMetadataBy] > b[model.sortMetadataBy] ? 1 : a[model.sortMetadataBy] < b[model.sortMetadataBy] ? -1 : 0);
   }
 
-  onSelectMeta(e, child){
-    if (!e || e.target.nodeName !== "INPUT"){
-      let {model, metadataObject} = this.props;
+  onSelectMeta(e, child) {
+    if (!e || e.target.nodeName !== "INPUT") {
+      let { model, metadataObject } = this.props;
       this.selectMeta(model, child ? child : metadataObject);
     }
   }
 
-  selectMeta(model, meta){
+  selectMeta(model, meta) {
     meta.expanded = !meta.expanded;
     meta.icon = meta.expanded ? "switch" : "chevronright";
-    if (meta.childXmlNames.length == 0 || model.deployRequestId || meta.childXmlNames[0].fullName == "*"){
+    if (meta.childXmlNames.length == 0 || model.deployRequestId || meta.childXmlNames[0].fullName == "*") {
 
       // Check if this metadata type should use REST API query
       if (this.shouldUseRestApiForList(meta.xmlName)) {
@@ -1429,19 +1429,19 @@ class ObjectSelector extends React.Component {
         // Use standard listMetadata API
         let metaFolderProof = this.getMetaFolderProof(meta);
         model.spinFor(
-          sfConn.soap(sfConn.wsdl(apiVersion, "Metadata"), "listMetadata", {queries: {type: metaFolderProof.xmlName, folder: metaFolderProof.directoryName}}).then(res => {
+          sfConn.soap(sfConn.wsdl(apiVersion, "Metadata"), "listMetadata", { queries: { type: metaFolderProof.xmlName, folder: metaFolderProof.directoryName } }).then(res => {
 
-            if (res){
+            if (res) {
               meta.childXmlNames = []; //reset tab if wildcard is the only child
               let resArray = Array.isArray(res) ? res : res ? [res] : []; // only one element can be returned
               resArray.forEach(elt => {
                 elt.isFolder = elt.type.endsWith("Folder");
-                if (elt.isFolder){
+                if (elt.isFolder) {
                   elt.xmlName = meta.xmlName;
                   elt.directoryName = elt.fullName;
                   elt.childXmlNames = [];
                 }
-                if (model.includeManagedPackage || (!model.includeManagedPackage && !elt.namespacePrefix)){
+                if (model.includeManagedPackage || (!model.includeManagedPackage && !elt.namespacePrefix)) {
                   elt.parent = meta;
                   if (!meta.childXmlNames.some(existingElt => existingElt.fullName === elt.fullName)) {
                     meta.childXmlNames.push(elt);
@@ -1460,65 +1460,65 @@ class ObjectSelector extends React.Component {
   }
 
   render() {
-    let {metadataObject} = this.props;
+    let { metadataObject } = this.props;
 
     const renderChildren = (children, parentXmlName, parentType) => {
       if (!children || children.length === 0) {
         return null;
       }
 
-      return h("ul", {className: "slds-accordion", key: parentXmlName + "_children"},
+      return h("ul", { className: "slds-accordion", key: parentXmlName + "_children" },
         children.map(child => {
           const metadataType = child.type || parentType || metadataObject.xmlName;
           const metadataName = child.fullName;
           const isHovered = this.state.hoveredItem === child.fullName;
           const itemKey = parentXmlName + "_li_" + child.fullName;
 
-          return h("li", {key: itemKey, className: "slds-accordion__list-item", hidden: child.hidden},
-            h("section", {className: child.expanded ? "slds-accordion__section slds-is-open" : "slds-accordion__section"},
+          return h("li", { key: itemKey, className: "slds-accordion__list-item", hidden: child.hidden },
+            h("section", { className: child.expanded ? "slds-accordion__section slds-is-open" : "slds-accordion__section" },
               h("div", {
                 className: "slds-accordion__summary",
                 title: child.fullName,
                 onClick: (e) => this.onSelectChild(child, e),
                 onMouseEnter: () => !child.isFolder && this.onMouseEnter(child.fullName),
                 onMouseLeave: () => this.onMouseLeave(),
-                style: {position: "relative"}
+                style: { position: "relative" }
               },
-              h("h4", {className: "slds-accordion__summary-heading"},
-                h("button", {"aria-controls": "accordion-details-" + child.fullName, "aria-expanded": child.expanded, className: "slds-button slds-button_reset slds-accordion__summary-action"},
-                  child.isFolder ? h("svg", {className: "reset-transform slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left", "aria-hidden": "true"},
-                    h("use", {xlinkHref: "symbols.svg#" + (child.icon ? child.icon : "chevronright")})
-                  ) : null,
-                  h("input", {
-                    type: "checkbox",
-                    className: !child.isFolder ? "margin-grandchild metadata" : "metadata",
-                    checked: !!child.selected,
-                    ref: (input) => {
-                      if (input) {
-                        input.indeterminate = !!child.indeterminate;
+                h("h4", { className: "slds-accordion__summary-heading" },
+                  h("button", { "aria-controls": "accordion-details-" + child.fullName, "aria-expanded": child.expanded, className: "slds-button slds-button_reset slds-accordion__summary-action" },
+                    child.isFolder ? h("svg", { className: "reset-transform slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left", "aria-hidden": "true" },
+                      h("use", { xlinkHref: "symbols.svg#" + (child.icon ? child.icon : "chevronright") })
+                    ) : null,
+                    h("input", {
+                      type: "checkbox",
+                      className: !child.isFolder ? "margin-grandchild metadata" : "metadata",
+                      checked: !!child.selected,
+                      ref: (input) => {
+                        if (input) {
+                          input.indeterminate = !!child.indeterminate;
+                        }
                       }
-                    }
-                  }),
-                  h("span", {
-                    className: "slds-text-body_small slds-accordion__summary-content",
-                    title: child.fullName,
-                    style: {display: "inline-flex", alignItems: "center", gap: "0.5rem"}
-                  },
-                  child.fullName + (child.expanded ? " (" + child.childXmlNames.length + ")" : ""),
-                  !child.isFolder && isHovered && !metadataType.toLowerCase().includes("bundle") && h("svg", {
-                    className: "slds-icon slds-icon_x-small slds-icon-text-default",
-                    style: {cursor: "pointer", flexShrink: 0},
-                    viewBox: "0 0 52 52",
-                    onClick: (e) => this.onViewMetadataClick(e, metadataType, metadataName),
-                    title: "View metadata"
-                  },
-                  h("use", {xlinkHref: "symbols.svg#preview"})
-                  )
+                    }),
+                    h("span", {
+                      className: "slds-text-body_small slds-accordion__summary-content",
+                      title: child.fullName,
+                      style: { display: "inline-flex", alignItems: "center", gap: "0.5rem" }
+                    },
+                      child.fullName + (child.expanded ? " (" + child.childXmlNames.length + ")" : ""),
+                      !child.isFolder && isHovered && !metadataType.toLowerCase().includes("bundle") && h("svg", {
+                        className: "slds-icon slds-icon_x-small slds-icon-text-default",
+                        style: { cursor: "pointer", flexShrink: 0 },
+                        viewBox: "0 0 52 52",
+                        onClick: (e) => this.onViewMetadataClick(e, metadataType, metadataName),
+                        title: "View metadata"
+                      },
+                        h("use", { xlinkHref: "symbols.svg#preview" })
+                      )
+                    )
                   )
                 )
-              )
               ),
-              child.expanded && h("div", {className: "slds-accordion__content", id: "accordion-details-" + child.fullName},
+              child.expanded && h("div", { className: "slds-accordion__content", id: "accordion-details-" + child.fullName },
                 renderChildren(child.childXmlNames, child.fullName, metadataType)
               )
             )
@@ -1528,40 +1528,40 @@ class ObjectSelector extends React.Component {
     };
 
     const isHovered = this.state.hoveredItem === metadataObject.xmlName;
-    return h("li", {className: "slds-accordion__list-item", hidden: metadataObject.hidden, key: metadataObject.xmlName},
-      h("section", {className: metadataObject.expanded ? "slds-accordion__section slds-is-open" : "slds-accordion__section"},
+    return h("li", { className: "slds-accordion__list-item", hidden: metadataObject.hidden, key: metadataObject.xmlName },
+      h("section", { className: metadataObject.expanded ? "slds-accordion__section slds-is-open" : "slds-accordion__section" },
         h("div", {
           className: "slds-accordion__summary",
           title: metadataObject.xmlName,
           onClick: (event) => { this.onSelectMeta(event); }
         },
-        h("h3", {className: "slds-accordion__summary-heading"},
-          h("button", {"aria-controls": "accordion-details-" + metadataObject.xmlName, "aria-expanded": metadataObject.expanded, className: "slds-button slds-button_reset slds-accordion__summary-action"},
-            h("svg", {className: "reset-transform slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left", "aria-hidden": "true"},
-              h("use", {xlinkHref: "symbols.svg#" + (metadataObject.icon ? metadataObject.icon : "chevronright")})
-            ),
-            h("input", {
-              type: "checkbox",
-              className: "metadata",
-              checked: !!metadataObject.selected,
-              onChange: this.onChange,
-              key: metadataObject.xmlName,
-              ref: (input) => {
-                if (input) {
-                  input.indeterminate = !!metadataObject.indeterminate;
+          h("h3", { className: "slds-accordion__summary-heading" },
+            h("button", { "aria-controls": "accordion-details-" + metadataObject.xmlName, "aria-expanded": metadataObject.expanded, className: "slds-button slds-button_reset slds-accordion__summary-action" },
+              h("svg", { className: "reset-transform slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left", "aria-hidden": "true" },
+                h("use", { xlinkHref: "symbols.svg#" + (metadataObject.icon ? metadataObject.icon : "chevronright") })
+              ),
+              h("input", {
+                type: "checkbox",
+                className: "metadata",
+                checked: !!metadataObject.selected,
+                onChange: this.onChange,
+                key: metadataObject.xmlName,
+                ref: (input) => {
+                  if (input) {
+                    input.indeterminate = !!metadataObject.indeterminate;
+                  }
                 }
-              }
-            }),
-            h("span", {
-              className: "slds-accordion__summary-content",
-              title: metadataObject.xmlName
-            },
-            metadataObject.xmlName + (metadataObject.expanded ? " (" + metadataObject.childXmlNames.length + ")" : "")
+              }),
+              h("span", {
+                className: "slds-accordion__summary-content",
+                title: metadataObject.xmlName
+              },
+                metadataObject.xmlName + (metadataObject.expanded ? " (" + metadataObject.childXmlNames.length + ")" : "")
+              )
             )
           )
-        )
         ),
-        metadataObject.expanded && h("div", {className: "slds-accordion__content", id: "accordion-details-" + metadataObject.xmlName},
+        metadataObject.expanded && h("div", { className: "slds-accordion__content", id: "accordion-details-" + metadataObject.xmlName },
           renderChildren(metadataObject.childXmlNames, metadataObject.xmlName, metadataObject.xmlName)
         )
       )
@@ -1584,8 +1584,8 @@ class ObjectSelector extends React.Component {
       model.getDeploymentComponentsAndPackageXml(deployRequestId);
     }
     model.reactCallback = cb => {
-      ReactDOM.render(h(App, {model}), root, cb);
+      ReactDOM.render(h(App, { model }), root, cb);
     };
-    ReactDOM.render(h(App, {model}), root);
+    ReactDOM.render(h(App, { model }), root);
   });
 }
