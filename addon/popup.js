@@ -1,6 +1,6 @@
 /* global React ReactDOM */
 import {sfConn, apiVersion, sessionError} from "./inspector.js";
-import {getLinkTarget, isOptionEnabled, isSettingEnabled, getLatestApiVersionFromOrg, setOrgInfo, getPKCEParameters, getBrowserType, getExtensionId, getClientId, getRedirectUri, Constants, copyToClipboard, DataCache, getFlowCompareUrl, isRecordId, getSobjectsList} from "./utils.js";
+import {getLinkTarget, isOptionEnabled, isSettingEnabled, getLatestApiVersionFromOrg, setOrgInfo, getPKCEParameters, getBrowserType, getExtensionId, getClientId, getRedirectUri, Constants, copyToClipboard, DataCache, getFlowCompareUrl, isRecordId, getSobjectsList, getThemeMode, setThemeMode, cycleThemeMode, getResolvedColorScheme} from "./utils.js";
 import {setupLinks} from "./links.js";
 import AlertBanner from "./components/AlertBanner.js";
 
@@ -109,6 +109,49 @@ function initLinks({sfHost}) {
   }
 }
 
+/**
+ * Renders one of the three theme icons (monitor/sun/moon) as an inline SVG.
+ * Mirrored in options.js (no symbols.svg entry exists for these yet) so the
+ * popup's quick-toggle button and the Options control always match.
+ */
+function renderThemeModeIcon(mode) {
+  if (mode == "light") {
+    return h("svg", {viewBox: "0 0 24 24", className: "slds-button slds-icon_x-small slds-icon-text-default slds-m-top_xxx-small sfir-theme-icon"},
+      h("circle", {cx: "12", cy: "12", r: "5", fill: "currentColor"}),
+      h("g", {stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round"},
+        h("line", {x1: "12", y1: "1", x2: "12", y2: "3"}),
+        h("line", {x1: "12", y1: "21", x2: "12", y2: "23"}),
+        h("line", {x1: "1", y1: "12", x2: "3", y2: "12"}),
+        h("line", {x1: "21", y1: "12", x2: "23", y2: "12"}),
+        h("line", {x1: "4.2", y1: "4.2", x2: "5.6", y2: "5.6"}),
+        h("line", {x1: "18.4", y1: "18.4", x2: "19.8", y2: "19.8"}),
+        h("line", {x1: "4.2", y1: "19.8", x2: "5.6", y2: "18.4"}),
+        h("line", {x1: "18.4", y1: "5.6", x2: "19.8", y2: "4.2"})
+      )
+    );
+  }
+  if (mode == "dark") {
+    return h("svg", {viewBox: "0 0 24 24", className: "slds-button slds-icon_x-small slds-icon-text-default slds-m-top_xxx-small sfir-theme-icon"},
+      h("mask", {id: "sfirMoonMaskPopup"},
+        h("rect", {x: "0", y: "0", width: "24", height: "24", fill: "white"}),
+        h("circle", {cx: "15", cy: "9", r: "7", fill: "black"})
+      ),
+      h("circle", {cx: "12", cy: "12", r: "9", fill: "currentColor", mask: "url(#sfirMoonMaskPopup)"})
+    );
+  }
+  // system
+  return h("svg", {viewBox: "0 0 24 24", className: "slds-button slds-icon_x-small slds-icon-text-default slds-m-top_xxx-small sfir-theme-icon"},
+    h("circle", {cx: "12", cy: "12", r: "9", fill: "none", stroke: "currentColor", strokeWidth: "2"}),
+    h("path", {d: "M12 3 A9 9 0 0 1 12 21 Z", fill: "currentColor"})
+  );
+}
+
+const THEME_MODE_TITLES = {
+  system: "Theme: System (click to switch to Light)",
+  light: "Theme: Light (click to switch to Dark)",
+  dark: "Theme: Dark (click to switch to System)"
+};
+
 class App extends React.PureComponent {
   constructor(props) {
     super(props);
@@ -135,6 +178,7 @@ class App extends React.PureComponent {
       ),
       toastConfig: null, // Will hold the complete toast configuration
       showToast: false,
+      themeMode: getThemeMode(),
     };
     this.onContextUrlMessage = this.onContextUrlMessage.bind(this);
     this.onShortcutKey = this.onShortcutKey.bind(this);
@@ -144,6 +188,11 @@ class App extends React.PureComponent {
     this.showToast = this.showToast.bind(this);
     this.getListViewQuery = this.getListViewQuery.bind(this);
     this.hideToast = this.hideToast.bind(this);
+    this.onToggleTheme = this.onToggleTheme.bind(this);
+  }
+  onToggleTheme() {
+    const nextMode = setThemeMode(cycleThemeMode(this.state.themeMode)); // persists + re-colors this popup immediately
+    this.setState({themeMode: nextMode});
   }
   async onContextRecordChange(e) {
     let {sfHost} = this.props;
@@ -395,7 +444,7 @@ class App extends React.PureComponent {
     const browser = getBrowserType();
     const clientId = getClientId(sfHost);
     const bannerUrlAction = this.getBannerUrlAction(sessionError, sfHost, clientId, browser);
-    const popupTheme = localStorage.getItem("popupDarkTheme") == "true" ? " header-dark" : " header-light";
+    const popupTheme = getResolvedColorScheme(this.state.themeMode) == "dark" ? " header-dark" : " header-light";
     return (
       h("div", {},
         h("div", {className: "slds-page-header slds-theme_shade popup-header" + popupTheme},
@@ -894,6 +943,24 @@ class App extends React.PureComponent {
                   style: {fill: "#9c9c9c"},
                 })
               )
+            )
+          ),
+          h(
+            "div",
+            {
+              className:
+              "slds-col slds-size_1-of-12 slds-text-align_right slds-icon_container",
+              title: THEME_MODE_TITLES[this.state.themeMode],
+            },
+            h(
+              "button",
+              {
+                type: "button",
+                className: "sfir-icon-button-reset",
+                "aria-label": THEME_MODE_TITLES[this.state.themeMode],
+                onClick: this.onToggleTheme,
+              },
+              renderThemeModeIcon(this.state.themeMode)
             )
           ),
           h(
@@ -4600,8 +4667,8 @@ class AllDataSearch extends React.PureComponent {
       "div",
       {
         className:
-          "input-with-dropdown slds-form-element__control slds-grow slds-input-has-icon "
-          + (rightIcon ? "slds-input-has-icon_left-right sfir-has-right-icon" : "slds-input-has-icon_right"),
+          "input-with-dropdown slds-form-element__control slds-grow slds-input-has-icon slds-input-has-icon_left-right"
+          + (rightIcon ? " sfir-has-right-icon" : ""),
       },
       h("input", {
         className: "slds-input sfir-font-size_11px",

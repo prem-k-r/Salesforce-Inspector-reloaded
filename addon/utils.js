@@ -33,6 +33,12 @@ export class Constants {
     {label: " Exclude Portal users", name: "portal", stateKey: "excludePortalUsersFromSearch"},
     {label: " Exclude Inactive users", name: "inactive", stateKey: "excludeInactiveUsersFromSearch"},
   ];
+  // Theme (dark mode)
+  /** localStorage key storing the theme mode: "system" | "light" | "dark" */
+  static THEME_MODE = "themeMode";
+  /** Superseded boolean option ("Popup Dark theme"). Kept only so existing installs can be migrated. */
+  static THEME_MODE_LEGACY = "popupDarkTheme";
+  static THEME_MODES = ["system", "light", "dark"];
 }
 
 /**
@@ -284,6 +290,85 @@ export function applyProductionStyling(sfHost) {
     return true;
   }
   return false;
+}
+
+/**
+ * Reads the user's stored theme preference, migrating the legacy boolean
+ * "Popup Dark theme" option (Constants.THEME_MODE_LEGACY) the first time it runs.
+ * @returns {"system"|"light"|"dark"}
+ */
+export function getThemeMode() {
+  let mode = localStorage.getItem(Constants.THEME_MODE);
+  if (mode === null) {
+    const legacy = localStorage.getItem(Constants.THEME_MODE_LEGACY);
+    mode = legacy === "true" ? "dark" : "system";
+    localStorage.setItem(Constants.THEME_MODE, mode);
+    localStorage.removeItem(Constants.THEME_MODE_LEGACY);
+  }
+  // Defensive fallback: an unrecognized or malformed value (e.g. JSON-quoted) should never break rendering.
+  if (!Constants.THEME_MODES.includes(mode)) {
+    try {
+      mode = JSON.parse(mode);
+    } catch (e) {
+      // not JSON either, fall through to default below
+    }
+  }
+  return Constants.THEME_MODES.includes(mode) ? mode : "system";
+}
+
+/**
+ * Applies the given theme mode to the current document by toggling the
+ * slds-color-scheme--* class (defined in styles/slds/slds.css) on <html>.
+ * This alone is enough for every SLDS-token-based color in the page to update,
+ * since those tokens are defined with the CSS light-dark() function.
+ * @param {"system"|"light"|"dark"} mode
+ */
+export function applyThemeMode(mode) {
+  if (!Constants.THEME_MODES.includes(mode)) {
+    mode = "system";
+  }
+  const root = document.documentElement;
+  for (const m of Constants.THEME_MODES) {
+    root.classList.remove("slds-color-scheme--" + m);
+  }
+  root.classList.add("slds-color-scheme--" + mode);
+}
+
+/**
+ * Persists the theme mode and immediately applies it to the current document.
+ * @param {"system"|"light"|"dark"} mode
+ * @returns {"system"|"light"|"dark"} the normalized mode that was stored
+ */
+export function setThemeMode(mode) {
+  if (!Constants.THEME_MODES.includes(mode)) {
+    mode = "system";
+  }
+  localStorage.setItem(Constants.THEME_MODE, mode);
+  applyThemeMode(mode);
+  return mode;
+}
+
+/**
+ * Returns the next mode in the System -> Light -> Dark -> System cycle,
+ * used by the quick-toggle icon button in the popup footer.
+ * @param {"system"|"light"|"dark"} currentMode
+ */
+export function cycleThemeMode(currentMode) {
+  const idx = Constants.THEME_MODES.indexOf(currentMode);
+  return Constants.THEME_MODES[(idx + 1) % Constants.THEME_MODES.length];
+}
+
+/**
+ * Resolves "system" to the OS/browser's current preference, so UI (like the
+ * quick-toggle icon) can reflect what's actually being shown right now.
+ * @param {"system"|"light"|"dark"} mode
+ * @returns {"light"|"dark"}
+ */
+export function getResolvedColorScheme(mode) {
+  if (mode === "dark" || mode === "light") {
+    return mode;
+  }
+  return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
 }
 
 export function getLinkTarget(e = {}) {

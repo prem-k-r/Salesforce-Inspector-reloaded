@@ -14,7 +14,7 @@
 }
 
 .sfir-options-tab-container {
-  background-color: #f7f9fb;
+  background-color: light-dark(#f7f9fb, #242424);
   position: sticky;
   top: 0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -22,10 +22,10 @@
 }
 
 .main-container {
-  background-color: #f8f8f8;
+  background-color: light-dark(#f8f8f8, #2e2e2e);
   padding: 8px 12px;
   border-radius: 5px;
-  border: 1px solid #dddbda;
+  border: 1px solid light-dark(#dddbda, #444444);
   margin: 12px 12px 0 12px;
   flex-grow: 1;
   overflow: auto;
@@ -57,25 +57,27 @@
   margin-left: 12px;
   font-weight: bold;
   border-radius: 4px;
-  border: 1px solid #dddbda;
+  border: 1px solid light-dark(#dddbda, #444444);
   padding: 0 8px;
   height: 32px;
+  background-color: light-dark(#ffffff, #242424);
+  color: light-dark(#181818, #f3f3f3);
 }
 
 .severity-error {
-  color: #c23934;
-  background: #fdeaea;
-  border-color: #c23934;
+  color: light-dark(#c23934, #fe8aa7);
+  background: light-dark(#fdeaea, #4b0620);
+  border-color: light-dark(#c23934, #fe8aa7);
 }
 .severity-warning {
-  color: #8a6d1b;
-  background: #fff8e1;
-  border-color: #ffb75d;
+  color: light-dark(#8a6d1b, #fcc003);
+  background: light-dark(#fff8e1, #2e2204);
+  border-color: light-dark(#ffb75d, #ca8501);
 }
 .severity-info {
-  color: #0070d2;
-  background: #e3f2fd;
-  border-color: #0070d2;
+  color: light-dark(#0070d2, #7cb1fe);
+  background: light-dark(#e3f2fd, #001e5b);
+  border-color: light-dark(#0070d2, #7cb1fe);
 }
 
 /* Enhanced Option Component Styles */
@@ -83,15 +85,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid light-dark(#e5e5e5, #444444);
   padding: 6px 12px;
   min-height: 40px;
-  background: #fff;
+  background: light-dark(#ffffff, #242424);
   transition: background 0.12s;
 }
 
 .enhanced-option-row:hover {
-  background: #f7faff;
+  background: light-dark(#f7faff, #2e2e2e);
 }
 
 .enhanced-option-content {
@@ -112,7 +114,7 @@
 
 .enhanced-option-title-text {
   font-weight: 600;
-  color: #2c3e50;
+  color: light-dark(#2c3e50, #d8e6fe);
   font-size: 0.875rem;
   margin: 0;
   white-space: nowrap;
@@ -128,7 +130,7 @@
 
 .enhanced-option-description {
   font-size: 0.83rem;
-  color: #6c757d;
+  color: light-dark(#6c757d, #aeaeae);
   margin: 0;
   flex: 1;
   min-width: 0;
@@ -161,12 +163,12 @@
 
 .enhanced-option-expand-btn:hover {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.05);
+  background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.08));
 }
 
 .expand-icon {
   transition: transform 0.2s ease;
-  fill: #6c757d;
+  fill: light-dark(#6c757d, #aeaeae);
 }
 
 .expand-icon.expanded {

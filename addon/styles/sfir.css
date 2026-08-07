@@ -1,5 +1,8 @@
 :root {
-    --sfir-custom-color: var(--slds-g-color-surface-inverse-1, var(--slds-g-color-brand-base-20));
+    /* Fixed on purpose (not light-dark()): this is a brand/masthead accent bar,
+       so it should stay navy the same way Salesforce's own global header does,
+       regardless of whether the page around it is light or dark. */
+    --sfir-custom-color: #032d60;
 }
 
 .sfir-display-popover-target {
@@ -17,6 +20,7 @@
 
 .slds-builder-header.sfir-header-override {
     background-color: var(--sfir-custom-color);
+    color: #ffffff;
 }
 
 .sfir-page-container {
@@ -35,7 +39,7 @@
 
 html:has(body.sfir-prod),
 .sfir-prod {
-    background-color: #e0a4b5 !important;
+    background-color: light-dark(#e0a4b5, #5c2430) !important;
     background-repeat: no-repeat !important;
     background-size: contain !important;
     background-attachment: fixed !important;
@@ -52,6 +56,18 @@ body{
 .sfir-icon-link {
     color: inherit;
     text-decoration: none;
+}
+
+/* Theme (System/Light/Dark) icons - Options page button group. Color is left
+   to inherit currentColor from the surrounding SLDS button (see popup.css for
+   the popup footer's version of this same icon, which fixes its own color
+   since it isn't sitting inside a colored button). */
+.sfir-theme-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    margin-inline-end: var(--slds-g-spacing-2, 0.5rem);
+    flex-shrink: 0;
+    vertical-align: -0.15em;
 }
 
 /* Dropdown menu styles */
@@ -164,7 +180,7 @@ a.download-salesforce {
 .sfir-agentforce-instructions-content {
   white-space: pre-wrap;
   line-height: 1.7;
-  color: #3e3e3c;
+  color: light-dark(#3e3e3c, #d3d3d3);
   padding: 0.75rem;
   font-size: 0.875rem;
 }
@@ -183,12 +199,12 @@ a.download-salesforce {
   line-height: 1.8;
   max-height: 60vh;
   overflow-y: auto;
-  background-color: #fafaf9;
-  border: 1px solid #e5e5e5;
+  background-color: light-dark(#fafaf9, #242424);
+  border: 1px solid light-dark(#e5e5e5, #444444);
   border-radius: 0.25rem;
   padding: 1.25rem;
   font-size: 0.9375rem;
-  color: #181818;
+  color: light-dark(#181818, #f3f3f3);
 }
 
 /* Generate Platform Event payload textarea */

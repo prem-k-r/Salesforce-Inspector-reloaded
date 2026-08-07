@@ -1,6 +1,6 @@
 /* global React ReactDOM */
 import {sfConn, apiVersion, defaultApiVersion} from "./inspector.js";
-import {nullToEmptyString, getLatestApiVersionFromOrg, Constants, UserInfoModel, createSpinForMethod, DataCache, applyProductionStyling} from "./utils.js";
+import {nullToEmptyString, getLatestApiVersionFromOrg, Constants, UserInfoModel, createSpinForMethod, DataCache, applyProductionStyling, getThemeMode, setThemeMode} from "./utils.js";
 import {getFlowScannerRules, FLOW_SCANNER_RULES_STORAGE_KEY} from "./flow-scanner-rules.js";
 /* global initButton, lightningflowscanner */
 import {DescribeInfo} from "./data-load.js";
@@ -85,7 +85,7 @@ class OptionsTabSelector extends React.Component {
                 {label: "Apex Classes", name: "classes", checked: false}
               ]}
           },
-          {option: Option, props: {type: "toggle", title: "Popup Dark theme", key: "popupDarkTheme"}},
+          {option: ThemeOption, props: {key: "themeOptionRow"}},
           {option: MultiCheckboxButtonGroup,
             props: {title: "Show buttons",
               key: "hideButtonsOption",
@@ -616,6 +616,89 @@ class ArrowButtonOption extends React.Component {
           h("div", {className: "slds-slider"},
             h("input", {type: "range", id: "arrowPositionSlider", className: "slds-slider__range", value: nullToEmptyString(this.state.arrowButtonPosition), min: "0", max: "100", step: "1", onChange: this.onChangeArrowPosition}),
             h("span", {className: "slds-slider__value", "aria-hidden": true}, this.state.arrowButtonPosition)
+          )
+        )
+      )
+    );
+  }
+}
+
+/**
+ * Renders one of the three theme icons (monitor/sun/moon) as an inline SVG.
+ * Kept intentionally self-contained (no symbols.svg entry exists for these
+ * yet) and mirrored in popup.js so the Options control and the popup's
+ * quick-toggle button always look identical.
+ */
+function renderThemeModeIcon(mode) {
+  if (mode == "light") {
+    return h("svg", {viewBox: "0 0 24 24", className: "sfir-theme-icon"},
+      h("circle", {cx: "12", cy: "12", r: "5", fill: "currentColor"}),
+      h("g", {stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round"},
+        h("line", {x1: "12", y1: "1", x2: "12", y2: "3"}),
+        h("line", {x1: "12", y1: "21", x2: "12", y2: "23"}),
+        h("line", {x1: "1", y1: "12", x2: "3", y2: "12"}),
+        h("line", {x1: "21", y1: "12", x2: "23", y2: "12"}),
+        h("line", {x1: "4.2", y1: "4.2", x2: "5.6", y2: "5.6"}),
+        h("line", {x1: "18.4", y1: "18.4", x2: "19.8", y2: "19.8"}),
+        h("line", {x1: "4.2", y1: "19.8", x2: "5.6", y2: "18.4"}),
+        h("line", {x1: "18.4", y1: "5.6", x2: "19.8", y2: "4.2"})
+      )
+    );
+  }
+  if (mode == "dark") {
+    return h("svg", {viewBox: "0 0 24 24", className: "sfir-theme-icon"},
+      h("mask", {id: "sfirMoonMaskOptions"},
+        h("rect", {x: "0", y: "0", width: "24", height: "24", fill: "white"}),
+        h("circle", {cx: "15", cy: "9", r: "7", fill: "black"})
+      ),
+      h("circle", {cx: "12", cy: "12", r: "9", fill: "currentColor", mask: "url(#sfirMoonMaskOptions)"})
+    );
+  }
+  // system
+  return h("svg", {viewBox: "0 0 24 24", className: "sfir-theme-icon"},
+    h("circle", {cx: "12", cy: "12", r: "9", fill: "none", stroke: "currentColor", strokeWidth: "2"}),
+    h("path", {d: "M12 3 A9 9 0 0 1 12 21 Z", fill: "currentColor"})
+  );
+}
+
+const THEME_MODE_LABELS = {system: "System", light: "Light", dark: "Dark"};
+
+class ThemeOption extends React.Component {
+
+  constructor(props) {
+    super(props);
+    this.onSelect = this.onSelect.bind(this);
+    this.state = {themeMode: getThemeMode()};
+  }
+
+  onSelect(mode) {
+    if (mode == this.state.themeMode) {
+      return;
+    }
+    setThemeMode(mode); // persists to localStorage AND re-colors this Options page immediately
+    this.setState({themeMode: mode});
+  }
+
+  render() {
+    return h("div", {className: "slds-grid slds-border_bottom slds-p-horizontal_small slds-p-vertical_x-small"},
+      h("div", {className: "slds-col slds-size_3-of-12 text-align-middle"},
+        h("span", {}, "Theme",
+          h(Tooltip, {tooltip: "Choose Light or Dark, or follow System to match your OS/browser setting. Also switchable from the icon next to Options in the popup footer.", idKey: "themeMode"})
+        )
+      ),
+      h("div", {className: "slds-col slds-size_9-of-12"},
+        h("div", {className: "slds-button-group", role: "group"},
+          Constants.THEME_MODES.map(mode =>
+            h("button", {
+              key: mode,
+              type: "button",
+              className: "slds-button " + (this.state.themeMode == mode ? "slds-button_brand" : "slds-button_neutral"),
+              "aria-pressed": this.state.themeMode == mode,
+              onClick: () => this.onSelect(mode)
+            },
+            renderThemeModeIcon(mode),
+            THEME_MODE_LABELS[mode]
+            )
           )
         )
       )
