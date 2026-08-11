@@ -63,7 +63,44 @@ chrome.action.onClicked.addListener(() => {
     msg: "shortcut_pressed", sfHost, command: "open-popup"
   });
 });
-chrome.commands?.onCommand.addListener((command) => {
+chrome.commands?.onCommand.addListener(async (command) => {
+  let activeHost = sfHost;
+  // Fallback for Connected App (OAuth) users
+  if (!activeHost) {
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length > 0 && tabs[0].url) {
+        const urlObj = new URL(tabs[0].url);
+        const validDomains = [
+          "salesforce.com", 
+          "salesforce-setup.com", 
+          "force.com", 
+          "cloudforce.com", 
+          "visualforce.com",
+          "sfcrmapps.cn",
+          "sfcrmproducts.cn", 
+          "salesforce.mil",
+          "force.mil",
+          "cloudforce.mil", 
+          "visualforce.mil",
+          "crmforce.mil",
+          "mcas.ms", 
+          "salesforce-experience.com",
+          "salesforce-sites.com" 
+        ];
+        const isSalesforceDomain = validDomains.some(domain => 
+          urlObj.hostname === domain || urlObj.hostname.endsWith("." + domain)
+        );
+        if (isSalesforceDomain) {
+          activeHost = urlObj.hostname;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (!activeHost) {
+    return;
+  }
   if (command.startsWith("link-")){
     let link;
     switch (command){
