@@ -1490,16 +1490,33 @@ class CustomShortcuts extends React.Component {
     this.onCancelEdit = this.onCancelEdit.bind(this);
     this.onSort = this.onSort.bind(this);
     this.onSearch = this.onSearch.bind(this);
+    this.onToggleGlobal = this.onToggleGlobal.bind(this);
     this.state = {
-      shortcuts: JSON.parse(localStorage.getItem(this.sfHost + "_orgLinks") || "[]"),
+      shortcuts: this.loadShortcuts(),
       editingIndex: -1,
-      newShortcut: {label: "", link: "", section: "", isExternal: false},
+      newShortcut: {label: "", link: "", section: "", isExternal: false, isGlobal: false},
       sortConfig: {
         key: null,
         direction: "asc"
       },
       searchTerm: ""
     };
+  }
+
+  loadShortcuts() {
+    const orgShortcuts = JSON.parse(localStorage.getItem(this.sfHost + "_orgLinks") || "[]")
+      .map((shortcut) => ({...shortcut, isGlobal: false}));
+    const globalShortcuts = JSON.parse(localStorage.getItem(Constants.GLOBAL_LINKS_KEY) || "[]")
+      .map((shortcut) => ({...shortcut, isGlobal: true}));
+    return [...orgShortcuts, ...globalShortcuts];
+  }
+
+  persistShortcuts(shortcuts) {
+    const toStoredShortcut = ({label, link, section, isExternal}) => ({label, link, section, isExternal});
+    const orgShortcuts = shortcuts.filter((shortcut) => !shortcut.isGlobal).map(toStoredShortcut);
+    const globalShortcuts = shortcuts.filter((shortcut) => shortcut.isGlobal).map(toStoredShortcut);
+    localStorage.setItem(this.sfHost + "_orgLinks", JSON.stringify(orgShortcuts));
+    localStorage.setItem(Constants.GLOBAL_LINKS_KEY, JSON.stringify(globalShortcuts));
   }
 
   onSearch(e) {
@@ -1582,7 +1599,7 @@ class CustomShortcuts extends React.Component {
   onAddShortcut() {
     this.setState({
       editingIndex: this.state.shortcuts.length,
-      newShortcut: {label: "", link: "", section: "", isExternal: false}
+      newShortcut: {label: "", link: "", section: "", isExternal: false, isGlobal: false}
     });
   }
 
@@ -1597,7 +1614,7 @@ class CustomShortcuts extends React.Component {
     const newShortcuts = [...this.state.shortcuts];
     newShortcuts.splice(index, 1);
     this.setState({shortcuts: newShortcuts});
-    localStorage.setItem(this.sfHost + "_orgLinks", JSON.stringify(newShortcuts));
+    this.persistShortcuts(newShortcuts);
   }
 
   onSaveShortcut() {
@@ -1616,16 +1633,29 @@ class CustomShortcuts extends React.Component {
     this.setState({
       shortcuts: newShortcuts,
       editingIndex: -1,
-      newShortcut: {label: "", link: "", section: "", isExternal: false}
+      newShortcut: {label: "", link: "", section: "", isExternal: false, isGlobal: false}
     });
 
-    localStorage.setItem(this.sfHost + "_orgLinks", JSON.stringify(newShortcuts));
+    this.persistShortcuts(newShortcuts);
   }
 
   onCancelEdit() {
     this.setState({
       editingIndex: -1,
-      newShortcut: {label: "", link: "", section: ""}
+      newShortcut: {label: "", link: "", section: "", isGlobal: false}
+    });
+  }
+
+  onToggleGlobal(index) {
+    const newShortcuts = [...this.state.shortcuts];
+    newShortcuts[index] = {...newShortcuts[index], isGlobal: !newShortcuts[index].isGlobal};
+    this.setState({shortcuts: newShortcuts});
+    this.persistShortcuts(newShortcuts);
+  }
+
+  onToggleNewShortcutGlobal(checked) {
+    this.setState({
+      newShortcut: {...this.state.newShortcut, isGlobal: checked}
     });
   }
 
@@ -1701,6 +1731,9 @@ class CustomShortcuts extends React.Component {
               h("div", {className: "slds-truncate", title: "External"}, "External")
             ),
             h("th", {scope: "col"},
+              h("div", {className: "slds-truncate", title: "Global"}, "Global")
+            ),
+            h("th", {scope: "col"},
               h("div", {className: "slds-truncate", title: "Actions"}, "Actions")
             )
           )
@@ -1749,6 +1782,22 @@ class CustomShortcuts extends React.Component {
                   )
                 )
               ),
+              h("td", {key: "global", "data-label": "Global"},
+                h("div", {className: "slds-truncate"},
+                  h("label", {className: "slds-checkbox_toggle slds-grid", title: newShortcut.isGlobal ? "Visible in every org" : "Visible only in this org"},
+                    h("input", {
+                      type: "checkbox",
+                      checked: !!newShortcut.isGlobal,
+                      onChange: (e) => this.onToggleNewShortcutGlobal(e.target.checked)
+                    }),
+                    h("span", {className: "slds-checkbox_faux_container center-label"},
+                      h("span", {className: "slds-checkbox_faux"}),
+                      h("span", {className: "slds-checkbox_on"}, "Global"),
+                      h("span", {className: "slds-checkbox_off"}, "Org")
+                    )
+                  )
+                )
+              ),
               h("td", {key: "actions", "data-label": "Actions"},
                 h("div", {className: "slds-truncate"},
                   h("button", {
@@ -1781,6 +1830,22 @@ class CustomShortcuts extends React.Component {
                 h("div", {className: "slds-truncate"},
                   shortcut.isExternal && h("svg", {className: "slds-button__icon"},
                     h("use", {xlinkHref: "symbols.svg#check"})
+                  )
+                )
+              ),
+              h("td", {key: "global", "data-label": "Global"},
+                h("div", {className: "slds-truncate"},
+                  h("label", {className: "slds-checkbox_toggle slds-grid", title: shortcut.isGlobal ? "Visible in every org - toggle to make it specific to this org" : "Visible only in this org - toggle to make it global"},
+                    h("input", {
+                      type: "checkbox",
+                      checked: !!shortcut.isGlobal,
+                      onChange: () => this.onToggleGlobal(index)
+                    }),
+                    h("span", {className: "slds-checkbox_faux_container center-label"},
+                      h("span", {className: "slds-checkbox_faux"}),
+                      h("span", {className: "slds-checkbox_on"}, "Global"),
+                      h("span", {className: "slds-checkbox_off"}, "Org")
+                    )
                   )
                 )
               ),
