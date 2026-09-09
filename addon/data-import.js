@@ -1475,7 +1475,7 @@ class App extends React.Component {
                               h("div", {className: "slds-grid slds-grid_vertical-align-center", style: {gap: "0.5rem"}},
                                 h("textarea", {id: "data-paste", "aria-describedby": "error-data-paste", value: model.uploadedFileName || "Paste data here, or\nDrop a file", onPaste: this.onDataPaste, className: model.dataError ? "slds-textarea slds-has-error" : "slds-textarea", disabled: model.isWorking(), readOnly: true, rows: 2, style: {flex: "1 1 auto", minWidth: 0, resize: "none", boxSizing: "border-box", padding: "0.5rem"}}),
                                 h("input", {type: "file", id: "data-file-input", accept: ".csv,.txt,.json,.xlsx,.xls", style: {display: "none"}, onChange: this.onFileChange, disabled: model.isWorking()}),
-                                h("label", {htmlFor: "data-file-input", className: "slds-button slds-button_neutral", style: {flex: "0 0 auto"}, title: "Choose a CSV, Excel (.xlsx/.xls), or JSON file"},
+                                h("label", {htmlFor: model.isWorking() ? undefined : "data-file-input", className: "slds-button slds-button_neutral", style: model.isWorking() ? {flex: "0 0 auto", opacity: 0.5, pointerEvents: "none", cursor: "not-allowed"} : {flex: "0 0 auto"}, title: "Choose a CSV, Excel (.xlsx/.xls), or JSON file"},
                                   h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#upload"})),
                                   "Choose File"
                                 )
