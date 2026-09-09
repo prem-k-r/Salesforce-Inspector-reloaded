@@ -6,6 +6,7 @@
 - `Data Export` / `Show All Data` Add quick navigation shortcuts to record Ids: `Ctrl`/`Cmd` + `Click` or middle-click to view in Salesforce, and `Ctrl`/`Cmd` + `Shift` + `Click` to open in Show All Data [feature #214](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/214) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix language flag icons for Catalan and Basque on the Users tab [issue #1196](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1196)
 - `Custom Shortcuts` Add "Global" toggle to share a shortcut across all orgs instead of keeping it specific to the current org [feature 191](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/191)
+-`Data Import` Fix Object field briefly shows a false "Unknown object" error after page load [issue #1333](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1333) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Event Monitor` Fix "no customChannel found" when the org has more than one custom channel [issue #1323](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1323)
 - `Popup` Fix missing record details in the Winter '27 release and resolve missing Org details when no maintenance is scheduled [issue #1316](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1316) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Allow editing Batch Size and Threads during an active import [issue #1036](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1036)
