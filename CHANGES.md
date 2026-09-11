@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Data Export` Fix column ordering for relationship fields and subqueries to match the query's SELECT order [issue #1345](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1345) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Add a Download (CSV) button with dynamic file naming that reflects the object, action, and filtered status counts [feature #1272](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1272) (contribution by Prem Kumar)
 - `Data Export` / `Show All Data` Add quick navigation shortcuts to record Ids: `Ctrl`/`Cmd` + `Click` or middle-click to view in Salesforce, and `Ctrl`/`Cmd` + `Shift` + `Click` to open in Show All Data [feature #214](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/214) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix language flag icons for Catalan and Basque on the Users tab [issue #1196](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1196)
