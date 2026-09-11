@@ -2,6 +2,10 @@
 
 ## Version 2.1
 
+- `Org Limits` Fix gauge falsely displaying as full/blue when a limit is "0 of 0 consumed" [issue #1347](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1347)
+- `Data Import` Fix Run button doesn't update when selecting Undelete before data is loaded [issue #1331](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1331) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Import` Fix Object field briefly shows a false "Unknown object" error after page load [issue #1333](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1333) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Popup` Fix Login-as Incognito disconnecting the session on the main tab [issue #1239](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1239) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix column ordering for relationship fields and subqueries to match the query's SELECT order [issue #1345](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1345) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Add a Download (CSV) button with dynamic file naming that reflects the object, action, and filtered status counts [feature #1272](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1272) (contribution by Prem Kumar)
 - `Data Export` / `Show All Data` Add quick navigation shortcuts to record Ids: `Ctrl`/`Cmd` + `Click` or middle-click to view in Salesforce, and `Ctrl`/`Cmd` + `Shift` + `Click` to open in Show All Data [feature #214](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/214) (contribution by [Prem Kumar](https://github.com/prem-k-r))
