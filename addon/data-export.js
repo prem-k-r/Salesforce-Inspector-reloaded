@@ -1734,7 +1734,11 @@ function RecordTable(vm) {
     }
     // If no columns are selected, search all columns
     if (!vm.filterColumns || vm.filterColumns.length === 0) {
-      return row.some(cell => {
+      return row.some((cell, index) => {
+        // Skip hidden columns
+        if (rt.colVisibilities && !rt.colVisibilities[index]) {
+          return false;
+        }
         if (cell == null) {
           return false;
         }
@@ -1747,6 +1751,10 @@ function RecordTable(vm) {
       const columnIndex = header.findIndex(col => col === column);
       if (columnIndex === -1) {
         return false;
+      }
+      // Skip hidden columns even if previously selected
+      if (rt.colVisibilities && !rt.colVisibilities[columnIndex]) {
+          return false;
       }
 
       const cellValue = String(row[columnIndex]);
