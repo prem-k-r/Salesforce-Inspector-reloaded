@@ -9,10 +9,6 @@
 - `Data Export` Fix column ordering for relationship fields and subqueries to match the query's SELECT order [issue #1345](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1345) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Add a Download (CSV) button with dynamic file naming that reflects the object, action, and filtered status counts [feature #1272](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1272) (contribution by Prem Kumar)
 - `Data Export` / `Show All Data` Add quick navigation shortcuts to record Ids: `Ctrl`/`Cmd` + `Click` or middle-click to view in Salesforce, and `Ctrl`/`Cmd` + `Shift` + `Click` to open in Show All Data [feature #214](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/214) (contribution by [Prem Kumar](https://github.com/prem-k-r))
-- `Popup` Fix language flag icons for Catalan and Basque on the Users tab [issue #1196](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1196)
-- `Custom Shortcuts` Add "Global" toggle to share a shortcut across all orgs instead of keeping it specific to the current org [feature 191](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/191)
--`Data Import` Fix Object field briefly shows a false "Unknown object" error after page load [issue #1333](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1333) (contribution by [Prem Kumar](https://github.com/prem-k-r))
--`Data Import` Fix Run button doesn't update when selecting Undelete before data is loaded [issue #1331](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1331) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Fix table header doesn't refresh after column edit until Skip is clicked [issue #1342](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1342) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Add "Upsert (Update Only)" action that updates the matching record and never inserts [issue #1334](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1334) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Event Monitor` Fix "no customChannel found" when the org has more than one custom channel [issue #1323](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1323)
@@ -37,7 +33,6 @@
 - `Event Monitor` Allow users to generate, publish and save Platform Events based on their definition
 - `Data Export` Add keyboard shortcuts to focus result filter (/ and Ctrl/Cmd+Shift+F) [#1222](https://github.com/tprouvot/Salesforce-Inspector-reloaded/pull/1222) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Prompt to start new or continue previous import when pasted data contains previous results #1226 (contribution by [Prem Kumar](https://github.com/prem-k-r))
-- `Popup` Fix search icon spacing on Objects/Shortcuts/Users tabs #1227 (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix column shifting in data export when downloading/copying hiding object columns #1230 (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Cache` Resolve "Unknown object" error for standard objects in Data Import and Field Explorer #1231 (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Add "Download (XLSX)" functionality using SheetJS #1232 (contribution by [Prem Kumar](https://github.com/prem-k-r))
