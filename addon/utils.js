@@ -1065,11 +1065,13 @@ export async function getSobjectsList(sfHost) {
 async function fetchSobjectsList(sfHost, currentFetch, cacheEnabled, cachedSobjectsList, lastFetch) {
   try {
     const entityMap = new Map();
+    const cachedSobjectNames = new Set();
 
     //if we have cached data, we need to add it to the entity map
     if (cachedSobjectsList && cachedSobjectsList.length > 0) {
       for (const entity of cachedSobjectsList) {
         entityMap.set(entity.name, entity);
+        cachedSobjectNames.add(entity.name);
       }
     }
 
@@ -1218,6 +1220,48 @@ async function fetchSobjectsList(sfHost, currentFetch, cacheEnabled, cachedSobje
         getObjects("/services/data/v" + apiVersion + "/sobjects/", "regularApi", lastFetch),
         getObjects("/services/data/v" + apiVersion + "/tooling/sobjects/", "toolingApi", lastFetch),
       ]);
+
+      // Fetch EntityDefinitions for newly added objects that lack a durableId
+      const newEntities = Array.from(entityMap.values()).filter(e => !cachedSobjectNames.has(e.name) && !e.durableId);
+      if (newEntities.length > 0) {
+        const batchSize = 200; // Safe chunk size for SOQL IN clause
+        const batchPromises = [];
+        
+        for (let i = 0; i < newEntities.length; i += batchSize) {
+          const chunk = newEntities.slice(i, i + batchSize).map(e => `'${e.name}'`).join(',');
+          const query = `SELECT QualifiedApiName, Label, KeyPrefix, DurableId, IsCustomSetting, RecordTypesSupported, NewUrl, IsEverCreatable FROM EntityDefinition WHERE QualifiedApiName IN (${chunk})`;
+          
+          batchPromises.push(
+            sfConn
+              .rest(`/services/data/v${apiVersion}/tooling/query?q=${encodeURIComponent(query)}`)
+              .then((respEntity) => {
+                for (let record of respEntity.records) {
+                  addEntity(
+                    {
+                      name: record.QualifiedApiName,
+                      label: record.Label,
+                      keyPrefix: record.KeyPrefix,
+                      durableId: record.DurableId,
+                      isCustomSetting: record.IsCustomSetting,
+                      recordTypesSupported: record.RecordTypesSupported,
+                      newUrl: record.NewUrl,
+                      isEverCreatable: record.IsEverCreatable,
+                      createable: record.IsEverCreatable,
+                      deletable: false,
+                      updateable: false,
+                    },
+                    null
+                  );
+                }
+              })
+              .catch((err) => {
+                console.error("list entity definitions delta: ", err);
+              })
+          );
+        }
+        await Promise.all(batchPromises);
+      }
+
     } else {
       // Fetch objects from different APIs
       await Promise.all([
