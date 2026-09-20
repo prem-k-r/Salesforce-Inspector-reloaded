@@ -2,6 +2,8 @@
 
 ## Version 2.1
 
+- `Data Import / Data Export` Add Bulk API 2.0 support [feature #1299](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1299) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Import` Add "Upsert (Update Only)" action that updates the matching record and never inserts [issue #1334](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1334) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Fix "Copy JSON" exporting the entire exported data instead of only filtered results [issue #1348](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1348) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Fix Search filter incorrectly matches data inside hidden object columns [issue #1353](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1353) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Org Limits` Fix gauge falsely displaying as full/blue when a limit is "0 of 0 consumed" [issue #1347](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1347)
