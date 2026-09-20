@@ -2029,7 +2029,6 @@ class App extends React.Component {
     searchParams.set("query", model.queryInput.value);
     url.search = searchParams.toString();
     navigator.clipboard.writeText(url.toString());
-    navigator.clipboard.writeText(url.toString());
     model.didUpdate();
   }
   onQueryPlan(){
@@ -2798,11 +2797,11 @@ class App extends React.Component {
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsCsv, title: "Copy exported data to clipboard for saving as a CSV file"}, 
                   h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "CSV"
                 ),
-                isOptionEnabled("export-json", this.state.hideButtonsOption, true)
+                isOptionEnabled("export-json", this.state.hideButtonsOption)
                   ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsJson, title: "Copy raw API output to clipboard"}, 
                       h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "JSON"
                     ) : null,
-                isOptionEnabled("export-markdown", this.state.hideButtonsOption, false)
+                isOptionEnabled("export-markdown", this.state.hideButtonsOption)
                   ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsMarkdown, title: "Copy exported data as a Markdown table"}, 
                       h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "Markdown"
                     ) : null,
@@ -2817,6 +2816,7 @@ class App extends React.Component {
                   title: (() => {
                     if (!model.canCopy() || model.canDownloadXlsx()) return "Download as an XLSX file";
                     const rowCount = model.exportedData ? model.exportedData.getVisibleTable().length : 0;
+                    const colCount = rowCount > 0 ? model.exportedData.getVisibleTable()[0].length : 0;
                     return (rowCount > 1048576) 
                       ? "Dataset exceeds Excel's row limit (> 1,048,576 rows). Use CSV instead." 
                       : "Dataset is too large for XLSX (> 2M cells). Use CSV instead.";
@@ -2831,8 +2831,7 @@ class App extends React.Component {
                 ),
                 isOptionEnabled("delete", this.state.hideButtonsOption)
                   ? h("button", {className: "slds-button slds-button_destructive delete-btn", disabled: !model.canDelete(), onClick: this.onDeleteRecords, title: "Open the 'Data Import' page with preloaded records to delete (< 20k records). 'Id' field needs to be queried"}, "Delete Records") : null,
-              )
-            ),
+              ),
               model.exportedData && model.exportedData.table[0]?.length > 0 && !model.exportError ? h("div", {className: "slds-form-element"},
                 h("div", {className: "slds-form-element__control slds-input-has-icon slds-input-has-icon_left slds-m-left_small slds-button-group"},
                   h("input", {
