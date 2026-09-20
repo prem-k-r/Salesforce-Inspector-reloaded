@@ -498,6 +498,9 @@ class Model {
     const visibleRecords = this.exportedData.records.filter((_, index) => this.exportedData.rowVisibilities[index + 1]);
     copyToClipboard(JSON.stringify(visibleRecords, null, "  "));
   }
+  copyAsMarkdown() {
+    copyToClipboard(this.exportedData.markdownSerialize());
+  }
   downloadAsCsv(){
     const csvContent = this.exportedData.csvSerialize(this.separator);
     const filename = `${this.exportedData.records[0]?.attributes.type}-${new Date().toLocaleDateString()}.csv`;
@@ -1791,6 +1794,19 @@ function RecordTable(vm) {
     },
     csvSerialize: separator => rt.getVisibleTable().map(row => row.map(cell => "\"" + cellToString(cell).split("\"").join("\"\"") + "\"").join(separator)).join("\r\n"),
     getXlsxData: () => rt.getVisibleTable().map(row => row.map(cell => cellToXlsxValue(cell))),
+    markdownSerialize: () => {
+      const table = rt.getVisibleTable();
+      if (table.length === 0) return "";
+
+      const formatCell = cell => cellToString(cell)
+        .replace(/\|/g, "\\|")
+        .replace(/\r?\n/g, "<br>");
+      const header = table[0].map(formatCell).join(" | ");
+      const separator = table[0].map(() => "---").join(" | ");
+      const rows = table.slice(1).map(row => row.map(formatCell).join(" | "));
+
+      return [`| ${header} |`, `| ${separator} |`, ...rows.map(row => `| ${row} |`)].join("\n");
+    },
     updateVisibility() {
       let filter = vm.resultsFilter;
       let countOfVisibleRecords = 0;
@@ -1864,6 +1880,7 @@ class App extends React.Component {
     this.onDownloadAsCsv = this.onDownloadAsCsv.bind(this);
     this.onDownloadAsXlsx = this.onDownloadAsXlsx.bind(this);
     this.onCopyAsJson = this.onCopyAsJson.bind(this);
+    this.onCopyAsMarkdown = this.onCopyAsMarkdown.bind(this);
     this.onDeleteRecords = this.onDeleteRecords.bind(this);
     this.onResultsFilterInput = this.onResultsFilterInput.bind(this);
     this.onFilterShortcutKeyDown = this.onFilterShortcutKeyDown.bind(this);
@@ -2043,6 +2060,11 @@ class App extends React.Component {
   onCopyAsJson() {
     let {model} = this.props;
     model.copyAsJson();
+    model.didUpdate();
+  }
+  onCopyAsMarkdown() {
+    let {model} = this.props;
+    model.copyAsMarkdown();
     model.didUpdate();
   }
   onDeleteRecords(e) {
@@ -2776,9 +2798,14 @@ class App extends React.Component {
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsCsv, title: "Copy exported data to clipboard for saving as a CSV file"}, 
                   h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "CSV"
                 ),
-                h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsJson, title: "Copy raw API output to clipboard"}, 
-                  h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "JSON"
-                ),
+                isOptionEnabled("export-json", this.state.hideButtonsOption, true)
+                  ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsJson, title: "Copy raw API output to clipboard"}, 
+                      h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "JSON"
+                    ) : null,
+                isOptionEnabled("export-markdown", this.state.hideButtonsOption, false)
+                  ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onCopyAsMarkdown, title: "Copy exported data as a Markdown table"}, 
+                      h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "Markdown"
+                    ) : null,
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onDownloadAsCsv, title: "Download as a CSV file"},
                   h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#download"})), "CSV"
                 ),
@@ -2790,7 +2817,6 @@ class App extends React.Component {
                   title: (() => {
                     if (!model.canCopy() || model.canDownloadXlsx()) return "Download as an XLSX file";
                     const rowCount = model.exportedData ? model.exportedData.getVisibleTable().length : 0;
-                    const colCount = rowCount > 0 ? model.exportedData.getVisibleTable()[0].length : 0;
                     return (rowCount > 1048576) 
                       ? "Dataset exceeds Excel's row limit (> 1,048,576 rows). Use CSV instead." 
                       : "Dataset is too large for XLSX (> 2M cells). Use CSV instead.";
@@ -2805,7 +2831,8 @@ class App extends React.Component {
                 ),
                 isOptionEnabled("delete", this.state.hideButtonsOption)
                   ? h("button", {className: "slds-button slds-button_destructive delete-btn", disabled: !model.canDelete(), onClick: this.onDeleteRecords, title: "Open the 'Data Import' page with preloaded records to delete (< 20k records). 'Id' field needs to be queried"}, "Delete Records") : null,
-              ),
+              )
+            ),
               model.exportedData && model.exportedData.table[0]?.length > 0 && !model.exportError ? h("div", {className: "slds-form-element"},
                 h("div", {className: "slds-form-element__control slds-input-has-icon slds-input-has-icon_left slds-m-left_small slds-button-group"},
                   h("input", {
