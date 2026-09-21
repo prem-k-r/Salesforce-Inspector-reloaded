@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Data Export` Add coloration on the query editor [issue #666](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/666)
 - `Data Import / Data Export` Add Bulk API 2.0 support [feature #1299](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1299) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Add "Upsert (Update Only)" action that updates the matching record and never inserts [issue #1334](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1334) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Fix "Copy JSON" exporting the entire exported data instead of only filtered results [issue #1348](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1348) (contribution by [Prem Kumar](https://github.com/prem-k-r))
