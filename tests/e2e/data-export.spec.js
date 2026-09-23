@@ -71,9 +71,9 @@ test.describe("Data Export", () => {
     await expect(firstDataRow.locator("td").nth(2)).toContainText("Test Account 1");
   });
 
-  test("Autocomplete Suggestions", async ({ page, context, extensionId }) => {
+  test("Autocomplete Suggestions", async ({page, context, extensionId}) => {
     await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
-    await page.waitForSelector("textarea#query", { timeout: 2000 });
+    await page.waitForSelector("textarea#query", {timeout: 2000});
 
     const queryInput = page.locator("textarea#query");
 
