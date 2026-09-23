@@ -1230,8 +1230,9 @@ class Model {
             if (clause != null) {
               let values = parseQuotedSoqlInValues(query, clause.openingIndex, clause.closingIndex);
               if (values != null && values.length > 1) {
+                let remainingCount = (values.length - 1).toLocaleString();
                 historyQuery = query.slice(0, clause.openingIndex + 1)
-                  + values[0] + ", [+ " + (values.length - 1) + " more values]"
+                  + values[0] + ", ... [+" + remainingCount + " more values]"
                   + query.slice(clause.closingIndex);
               }
             }
