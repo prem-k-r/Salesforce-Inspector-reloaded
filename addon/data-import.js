@@ -568,7 +568,7 @@ export class Model {
     let header = this.importData.importTable.header.map(c => c.columnValue);
     let data = this.importData.taggedRows.filter(row => this.showStatus[row.status]).map(row => row.cells);
     let csvContent = csvSerialize([header, ...data], separator);
-    let objectName = this.importType; 
+    let objectName = this.importType;
     let actionName = this.importAction[0].toUpperCase() + this.importAction.slice(1);
     const statuses = ["Succeeded", "Failed", "Processing", "Queued"];
     let countParts = statuses
@@ -1919,89 +1919,24 @@ function convertValueForApi(value) {
   return !Number.isNaN(n) && String(n) === s ? n : s;
 }
 
+function isUnsafeKey(key) {
+  return key === "__proto__" || key === "constructor" || key === "prototype";
+}
+
 function setNestedValue(obj, path, value) {
   const parts = path.split(".");
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const k = parts[i];
+    if (isUnsafeKey(k)) {
+      throw new Error(`Invalid field path "${path}"`);
+    }
     if (!(cur[k] && typeof cur[k] === "object")) cur[k] = {};
     cur = cur[k];
   }
-  cur[parts[parts.length - 1]] = value;
-}
-
-// Neither SOAP upsert() nor the REST sObject Collections upsert endpoint can refuse to insert.
-// Only the single-record External ID PATCH resource honors updateOnly=true (API v61.0+), and it
-// only batches via Composite, which caps at 25 subrequests/call - hence everything below.
-const COMPOSITE_BATCH_LIMIT = 25;
-const UPDATE_ONLY_MIN_API_VERSION = 61;
-
-function effectiveBatchSize(importAction, requestedBatchSize) {
-  if (importAction != "upsertUpdateOnly") {
-    return requestedBatchSize;
+  const lastKey = parts[parts.length - 1];
+  if (isUnsafeKey(lastKey)) {
+    throw new Error(`Invalid field path "${path}"`);
   }
-  return Math.min(requestedBatchSize, COMPOSITE_BATCH_LIMIT);
-}
-
-// Empty cells null the field directly (REST has no fieldsToNull list); an empty relationship
-// column nulls the underlying lookup field, never the relationship name.
-function buildUpdateOnlyFields(header, row, inputIdColumnIndex) {
-  let fields = {};
-  for (let c = 0; c < row.length; c++) {
-    if (header[c][0] == "_") {
-      continue;
-    }
-    let columnName = header[c].split(":");
-    let [fieldName] = columnName;
-    let isId = c === inputIdColumnIndex || fieldName.toLowerCase() === "id";
-    if (isId) {
-      continue; // the External ID value goes in the URL, never in the body
-    }
-    if (row[c].trim() == "") {
-      let nullTarget = columnName.length == 1
-        ? (fieldName.includes(".") ? fieldName.split(".")[0] : fieldName)
-        : (/__r$/.test(fieldName) ? fieldName.replace(/__r$/, "__c") : fieldName + "Id");
-      fields[nullTarget] = null;
-    } else if (columnName.length == 1) {
-      fields[fieldName] = row[c];
-    } else {
-      let [relFieldName, /* referencedSobject */, subFieldName] = columnName;
-      fields[relFieldName] = {[subFieldName]: row[c]};
-    }
-  }
-  return fields;
-}
-
-function buildUpdateOnlySubrequest(apiVersion, sobjectType, externalIdFieldName, externalIdValue, fields, referenceId) {
-  let url = "/services/data/v" + apiVersion + "/sobjects/"
-    + encodeURIComponent(sobjectType) + "/"
-    + encodeURIComponent(externalIdFieldName) + "/"
-    + encodeURIComponent(externalIdValue)
-    + "?updateOnly=true";
-  return {method: "PATCH", url, referenceId, body: fields};
-}
-
-// Body can be an array of {errorCode, message, fields}, a single one of those, or something else
-// entirely (e.g. the matched-records list on a 300) - fall back to a readable dump either way.
-function formatUpdateOnlyErrors(body, httpStatusCode) {
-  let errors = Array.isArray(body) ? body : (body ? [body] : []);
-  if (errors.length == 0) {
-    return "HTTP " + httpStatusCode;
-  }
-  return errors.map(err => {
-    if (err && typeof err == "object" && (err.errorCode || err.message)) {
-      let fields = Array.isArray(err.fields) && err.fields.length ? " [" + err.fields.join(", ") + "]" : "";
-      return (err.errorCode || ("HTTP " + httpStatusCode)) + ": " + (err.message || "Unknown error") + fields;
-    }
-    return "HTTP " + httpStatusCode + ": " + JSON.stringify(err);
-  }).join(", ");
-}
-
-function parseUpdateOnlySubresponse(subresponse) {
-  let httpStatusCode = subresponse.httpStatusCode;
-  if (httpStatusCode >= 200 && httpStatusCode < 300) {
-    let body = subresponse.body || {};
-    return {success: true, id: body.id || "", errorText: ""};
-  }
-  return {success: false, id: "", errorText: formatUpdateOnlyErrors(subresponse.body, httpStatusCode)};
+  cur[lastKey] = value;
 }

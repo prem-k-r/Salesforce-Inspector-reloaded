@@ -2,6 +2,10 @@
 
 ## Version 2.1
 
+- `Popup` "Enable Log" button now automatically creates (or reuses) a "sfir" Debug Level with every category set to FINEST when the configured debug level doesn't exist in the org, instead of failing
+- `Show All Data` Improve selected text visibility on highlighted rows [issue #1097](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1097) (contribution by [James C](https://github.com/Exotic209093))
+- `Data Import` Add a Download (CSV) button with dynamic file naming that reflects the object, action, and filtered status counts [feature #1272](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1272) (contribution by Prem Kumar)
+- `Data Export` Add coloration on the query editor [issue #666](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/666)
 - `Data Import` Fix "Copy JSON" exporting the entire exported data instead of only filtered results [issue #1348](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1348) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Fix Search filter incorrectly matches data inside hidden object columns [issue #1353](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1353) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Org Limits` Fix gauge falsely displaying as full/blue when a limit is "0 of 0 consumed" [issue #1347](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1347)
@@ -9,7 +13,6 @@
 - `Data Import` Fix Object field briefly shows a false "Unknown object" error after page load [issue #1333](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1333) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix Login-as Incognito disconnecting the session on the main tab [issue #1239](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1239) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix column ordering for relationship fields and subqueries to match the query's SELECT order [issue #1345](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1345) (contribution by [Prem Kumar](https://github.com/prem-k-r))
-- `Data Import` Add a Download (CSV) button with dynamic file naming that reflects the object, action, and filtered status counts [feature #1272](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1272) (contribution by Prem Kumar)
 - `Data Export` / `Show All Data` Add quick navigation shortcuts to record Ids: `Ctrl`/`Cmd` + `Click` or middle-click to view in Salesforce, and `Ctrl`/`Cmd` + `Shift` + `Click` to open in Show All Data [feature #214](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/214) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Fix table header doesn't refresh after column edit until Skip is clicked [issue #1342](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1342) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Add "Upsert (Update Only)" action that updates the matching record and never inserts [issue #1334](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1334) (contribution by [Prem Kumar](https://github.com/prem-k-r))
