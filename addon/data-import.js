@@ -599,7 +599,7 @@ export class Model {
     let header = this.importData.importTable.header.map(c => c.columnValue);
     let data = this.importData.taggedRows.filter(row => this.showStatus[row.status]).map(row => row.cells);
     let csvContent = csvSerialize([header, ...data], separator);
-    let objectName = this.importType; 
+    let objectName = this.importType;
     let actionName = this.importAction[0].toUpperCase() + this.importAction.slice(1);
     const statuses = ["Succeeded", "Failed", "Processing", "Queued"];
     let countParts = statuses
@@ -1604,6 +1604,7 @@ export class App extends React.Component {
     this.onCopyAsExcelClick = this.onCopyAsExcelClick.bind(this);
     this.onCopyAsCsvClick = this.onCopyAsCsvClick.bind(this);
     this.onDownloadAsCsvClick = this.onDownloadAsCsvClick.bind(this);
+    this.onDownloadAsCsvClick = this.onDownloadAsCsvClick.bind(this);
     this.onCopyOptionsClick = this.onCopyOptionsClick.bind(this);
     this.onSkipAllUnknownFieldsClick = this.onSkipAllUnknownFieldsClick.bind(this);
     this.onConfirmPopupYesClick = this.onConfirmPopupYesClick.bind(this);
@@ -1786,6 +1787,15 @@ export class App extends React.Component {
       separator = localStorage.getItem("csvSeparator");
     }
     model.copyResult(separator);
+  }
+  onDownloadAsCsvClick(e) {
+    e.preventDefault();
+    let {model} = this.props;
+    let separator = ",";
+    if (localStorage.getItem("csvSeparator")) {
+      separator = localStorage.getItem("csvSeparator");
+    }
+    model.downloadResult(separator);
   }
   onDownloadAsCsvClick(e) {
     e.preventDefault();
@@ -2267,7 +2277,13 @@ export class App extends React.Component {
               h("button", {disabled: !model.importCounts().Failed > 0, onClick: this.onRetryFailedClick, className: "slds-button slds-button_neutral"}, "Retry Failed"),
               h("div", {className: "slds-button-group"},
                 h("button", {disabled: !model.canCopy(), onClick: this.onCopyAsExcelClick, title: "Copy import result to clipboard for pasting into Excel or similar", className: "slds-button slds-button_neutral slds-m-horizontal_none"}, "Copy (Excel)"),
+                h("button", {disabled: !model.canCopy(), onClick: this.onCopyAsExcelClick, title: "Copy import result to clipboard for pasting into Excel or similar", className: "slds-button slds-button_neutral slds-m-horizontal_none"}, "Copy (Excel)"),
                 h("button", {disabled: !model.canCopy(), onClick: this.onCopyAsCsvClick, title: "Copy import result to clipboard for saving as a CSV file", className: "slds-button slds-button_neutral"}, "Copy (CSV)"),
+                h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onDownloadAsCsvClick, title: "Download as a CSV file"},
+                  h("svg", {className: "slds-button__icon"},
+                    h("use", {xlinkHref: "symbols.svg#download"})
+                  )
+                )
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onDownloadAsCsvClick, title: "Download as a CSV file"},
                   h("svg", {className: "slds-button__icon"},
                     h("use", {xlinkHref: "symbols.svg#download"})
@@ -2553,11 +2569,18 @@ function convertValueForApi(value) {
   return !Number.isNaN(n) && String(n) === s ? n : s;
 }
 
+function isUnsafeKey(key) {
+  return key === "__proto__" || key === "constructor" || key === "prototype";
+}
+
 function setNestedValue(obj, path, value) {
   const parts = path.split(".");
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const k = parts[i];
+    if (isUnsafeKey(k)) {
+      throw new Error(`Invalid field path "${path}"`);
+    }
     if (!(cur[k] && typeof cur[k] === "object")) cur[k] = {};
     cur = cur[k];
   }
