@@ -1604,7 +1604,6 @@ export class App extends React.Component {
     this.onCopyAsExcelClick = this.onCopyAsExcelClick.bind(this);
     this.onCopyAsCsvClick = this.onCopyAsCsvClick.bind(this);
     this.onDownloadAsCsvClick = this.onDownloadAsCsvClick.bind(this);
-    this.onDownloadAsCsvClick = this.onDownloadAsCsvClick.bind(this);
     this.onCopyOptionsClick = this.onCopyOptionsClick.bind(this);
     this.onSkipAllUnknownFieldsClick = this.onSkipAllUnknownFieldsClick.bind(this);
     this.onConfirmPopupYesClick = this.onConfirmPopupYesClick.bind(this);
@@ -1787,15 +1786,6 @@ export class App extends React.Component {
       separator = localStorage.getItem("csvSeparator");
     }
     model.copyResult(separator);
-  }
-  onDownloadAsCsvClick(e) {
-    e.preventDefault();
-    let {model} = this.props;
-    let separator = ",";
-    if (localStorage.getItem("csvSeparator")) {
-      separator = localStorage.getItem("csvSeparator");
-    }
-    model.downloadResult(separator);
   }
   onDownloadAsCsvClick(e) {
     e.preventDefault();
@@ -2277,13 +2267,7 @@ export class App extends React.Component {
               h("button", {disabled: !model.importCounts().Failed > 0, onClick: this.onRetryFailedClick, className: "slds-button slds-button_neutral"}, "Retry Failed"),
               h("div", {className: "slds-button-group"},
                 h("button", {disabled: !model.canCopy(), onClick: this.onCopyAsExcelClick, title: "Copy import result to clipboard for pasting into Excel or similar", className: "slds-button slds-button_neutral slds-m-horizontal_none"}, "Copy (Excel)"),
-                h("button", {disabled: !model.canCopy(), onClick: this.onCopyAsExcelClick, title: "Copy import result to clipboard for pasting into Excel or similar", className: "slds-button slds-button_neutral slds-m-horizontal_none"}, "Copy (Excel)"),
                 h("button", {disabled: !model.canCopy(), onClick: this.onCopyAsCsvClick, title: "Copy import result to clipboard for saving as a CSV file", className: "slds-button slds-button_neutral"}, "Copy (CSV)"),
-                h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onDownloadAsCsvClick, title: "Download as a CSV file"},
-                  h("svg", {className: "slds-button__icon"},
-                    h("use", {xlinkHref: "symbols.svg#download"})
-                  )
-                )
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy(), onClick: this.onDownloadAsCsvClick, title: "Download as a CSV file"},
                   h("svg", {className: "slds-button__icon"},
                     h("use", {xlinkHref: "symbols.svg#download"})
