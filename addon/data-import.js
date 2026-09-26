@@ -228,7 +228,7 @@ class Model {
   }
 
   // Reads a File object (from a file input or drag-and-drop) and loads it as import data.
-  // Supports .csv/.txt (plain text), .json, and .xlsx/.xls (via SheetJS).
+  // Supports .csv/.txt (plain text), .json, .xlsx (via SheetJS), and fake .xls exports (Salesforce HTML/XML report files).
   // For workbooks with more than one sheet, the first sheet is loaded immediately, and
   // availableSheets/selectedSheet are populated so the UI can offer a picker to switch sheets.
   // `seq` (from beginFileUpload) lets us detect that a newer file was chosen while this one was
@@ -240,23 +240,62 @@ class Model {
     let name = file.name.toLowerCase();
     try {
       if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+        let buffer = await file.arrayBuffer();
+        if (seq !== this.uploadSeq) return; // A newer file was selected while reading from disk.
+
+        let decoder = new TextDecoder("utf-8");
+        let headerText = decoder.decode(buffer.slice(0, 2048)).toLowerCase();
+
+        // Check if the file is HTML/XML text (e.g. raw Salesforce report exports or HTML web pages disguised as .xls)
+        if (headerText.includes("<html") || headerText.includes("<table") || headerText.includes("<xml")) {
+          let fullText = decoder.decode(buffer);
+          const doc = new DOMParser().parseFromString(fullText, "text/html");
+          const trElements = doc.querySelectorAll("tr");
+
+          // 1. Direct HTML export containing actual <tr> table rows
+          if (trElements.length > 0) {
+            const rows = [];
+            trElements.forEach(tr => {
+              const row = [];
+              tr.querySelectorAll("td, th").forEach(cell => {
+                row.push(cell.textContent.replace(/\u00a0/g, " ").trim());
+              });
+              if (row.length > 0) rows.push(row.join("\t"));
+            });
+            fullText = rows.join("\r\n");
+
+            this.workbook = null;
+            this.availableSheets = null;
+            this.selectedSheet = null;
+            this.setData(fullText);
+            return;
+          }
+
+          // 2. Excel Web Page Frameset (Data was moved to a separate _files/sheet001.htm subfolder by Excel)
+          if (doc.querySelector("frameset, frame") || headerText.includes("excel workbook frameset")) {
+            throw new Error(
+              "This file was saved as an HTML Web Page by Excel. " +
+              "Please open it in Excel and select 'Save As' -> 'Excel Workbook (*.xlsx)' before uploading."
+            );
+          }
+        }
+
+        // 3. Excel files (.xlsx) parsed via SheetJS
         if (typeof XLSX === "undefined") {
-          if (seq !== this.uploadSeq) return;
           this.dataError = "SheetJS (xlsx) library is not loaded.";
           this.updateResult(null);
           return;
         }
-        let buffer = await file.arrayBuffer();
-        if (seq !== this.uploadSeq) return; // A newer file was selected while this one was reading.
+
         // cellDates: parse date-formatted cells as JS Date objects instead of raw serial numbers,
         // so we can control the output format below (Excel's display format is often locale-specific,
         // e.g. "6/9/2026", which Salesforce would reject for Date fields expecting "yyyy-mm-dd").
         let workbook = XLSX.read(buffer, {type: "array", cellDates: true});
-        if (seq !== this.uploadSeq) return;
         this.workbook = workbook;
         this.availableSheets = workbook.SheetNames.length > 1 ? workbook.SheetNames : null;
         this.loadSheet(workbook.SheetNames[0]);
       } else {
+        // Standard CSV, TXT, JSON
         this.workbook = null;
         this.availableSheets = null;
         this.selectedSheet = null;
