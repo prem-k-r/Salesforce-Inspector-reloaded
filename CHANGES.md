@@ -4,9 +4,11 @@
 
 - `Show All Data` Fix "Get field usage" displaying as Error for location type fields [issue #1386](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1386) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix record context (and "Show all data" button) not detected on Lightning domains that insert extra labels between `lightning` and the base domain
+- `Data Export` Fix object and field autocomplete suggestions when writing subqueries [issue #600](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/600) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Fix autocomplete suggestions when a field name starts with "from" [issue #557](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/557) (contribution by [Ruben Halman](https://github.com/RubenHalman))
 - `Popup` "Enable Log" button now automatically creates (or reuses) a "sfir" Debug Level with every category set to FINEST when the configured debug level doesn't exist in the org, instead of failing
 - `Show All Data` Improve selected text visibility on highlighted rows [issue #1097](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1097) (contribution by [James C](https://github.com/Exotic209093))
-- `Data Import` Add a Download (CSV) button with dynamic file naming that reflects the object, action, and filtered status counts [feature #1272](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1272) (contribution by Prem Kumar)
+- `Data Import` Add a Download (CSV) button with dynamic file naming that reflects the object, action, and filtered status counts [feature #1272](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1272) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Add coloration on the query editor [issue #666](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/666)
 - `Data Import / Data Export` Add Bulk API 2.0 support [feature #1299](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1299) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Import` Add "Upsert (Update Only)" action that updates the matching record and never inserts [issue #1334](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1334) (contribution by [Prem Kumar](https://github.com/prem-k-r))
