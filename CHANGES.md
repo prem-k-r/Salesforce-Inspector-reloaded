@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Data Export` Fix `IN (` not suggesting picklist values in the query editor until a quote is typed [issue #1411](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1411) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix Ctrl+Space inserting all the fields list inside WHERE/HAVING conditions [issue #1409](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1409) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix keyboard selection visibility and scroll-into-view behavior in search dropdown, and resolve duplicate recent items fetching [issue #1338](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1338) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Add option to hide duplicate SIR popup in embedded iframes (Setup pages, reports, dashboards, Visualforce pages, etc.) [issue #1383](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1383) (contribution by [Prem Kumar](https://github.com/prem-k-r))
