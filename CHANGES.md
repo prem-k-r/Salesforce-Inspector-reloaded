@@ -3,6 +3,8 @@
 ## Version 2.1
 
 - `Data Export` Fix query editor text alignment, text wrap desync on scrollbars, and native search (Ctrl+F) scroll desync [issue #1380](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1380) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Metadata Retrieve` Improve screen reader accessibility: announce filter result counts, announce success/error messages reliably (even after the toast disappears), and remove the redundant button stop from the tab order on metadata item checkboxes [issue #1399](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1399)
+- `Show All Data` Fix Field Usage (%) column sorting by the rounded displayed percentage instead of the exact populated ratio [issue #1401](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1401)
 - Fix Prism syntax highlighting re-running on every unrelated re-render instead of only when the highlighted content actually changed, across `Data Export`, `REST Explorer`, `Explore API`, `Event Monitor`, `Dependencies Explorer` and `Metadata Retrieve`
 - `Data Export` Add a Ctrl + ' (or Cmd + ') shortcut to the query editor to quickly wrap/unwrap selected text in single quotes [feature #1393](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1393) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Field Manager` Rename `Field Creator` to `Field Manager`, rework the UI with SLDS, and add the ability to retrieve, view and edit existing custom fields' Label, Description and Help Text - including previously unsupported types such as Lookup, Master-Detail, Roll-Up Summary and Auto Number [discussion #1361](https://github.com/tprouvot/Salesforce-Inspector-reloaded/discussions/1361)
