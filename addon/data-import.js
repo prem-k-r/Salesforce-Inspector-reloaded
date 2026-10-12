@@ -2192,6 +2192,7 @@ export class App extends React.Component {
                                 options: model.availableActions,
                                 value: model.importAction,
                                 disabled: model.isWorking(),
+                                dropdownHeight: "222px",
                                 onChange: (val) => {
                                   model.importAction = val;
                                   let selectedActionObj = model.availableActions.find(a => a.value === val);
