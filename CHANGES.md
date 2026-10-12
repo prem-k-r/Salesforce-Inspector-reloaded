@@ -2,6 +2,10 @@
 
 ## Version 2.1
 
+
+- `Popup` Add option to hide duplicate SIR popup in embedded iframes (Setup pages, reports, dashboards, Visualforce pages, etc.) [issue #1383](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1383) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Fix query editor text alignment, text wrap desync on scrollbars, and native search (Ctrl+F) scroll desync [issue #1380](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1380) (contribution by [Prem Kumar](https://github.com/prem-k-r))
+- `Data Export` Add a Ctrl + ' (or Cmd + ') shortcut to the query editor to quickly wrap/unwrap selected text in single quotes [feature #1393](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1393) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Show All Data` Replace the plain-text editor for picklist, multipicklist, and boolean fields with an SLDS2 combobox, including dependent picklist filtering and validation [feature #405](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/405), [feature #1207](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1207) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Metadata Retrieve` Improve screen reader accessibility: announce filter result counts, announce success/error messages reliably (even after the toast disappears), and remove the redundant button stop from the tab order on metadata item checkboxes [issue #1399](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1399)
 - `Show All Data` Fix Field Usage (%) column sorting by the rounded displayed percentage instead of the exact populated ratio [issue #1401](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1401)
