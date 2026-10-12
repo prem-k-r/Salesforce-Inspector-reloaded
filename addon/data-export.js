@@ -3569,11 +3569,11 @@ class App extends React.Component {
                 h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isBulk(), onClick: this.onCopyAsCsv, title: "Copy exported data to clipboard for saving as a CSV file"},
                   h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "CSV"
                 ),
-                isOptionEnabled("export-json", this.state.hideButtonsOption)
+                isOptionEnabled("export-json", this.state.hideButtonsOption, true)
                   ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isBulk(), onClick: this.onCopyAsJson, title: "Copy raw API output to clipboard"},
                       h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "JSON"
                     ) : null,
-                isOptionEnabled("export-markdown", this.state.hideButtonsOption)
+                isOptionEnabled("export-markdown", this.state.hideButtonsOption, false)
                   ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isBulk(), onClick: this.onCopyAsMarkdown, title: "Copy exported data as a Markdown table"},
                       h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "Markdown"
                     ) : null,

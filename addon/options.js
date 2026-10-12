@@ -240,7 +240,6 @@ class OptionsTabSelector extends React.Component {
                 {label: "Delete Records", name: "delete", checked: true},
                 {label: "Export Query", name: "export-query", checked: false},
                 {label: "Agentforce", name: "export-agentforce", checked: false},
-                {label: "Agentforce", name: "export-agentforce", checked: false},
                 {label: "Copy (JSON)", name: "export-json", checked: true},
                 {label: "Copy (Markdown)", name: "export-markdown", checked: false}
               ]}
