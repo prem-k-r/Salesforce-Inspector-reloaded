@@ -6,7 +6,7 @@ import {getObjectSetupLinks, getFieldSetupLinks} from "./setup-links.js";
 import {PageHeader} from "./components/PageHeader.js";
 import {UserInfoModel, PromptTemplate, Constants, getSalesforceViewLink, getObjectManagerParent} from "./utils.js";
 import AgentforceModal from "./components/AgentforceModal.js";
-import {Combobox, getControllerValueIndex, isValueValidForControllerIndex} from "./combobox.js";
+import {Combobox, getControllerValueIndex, isValueValidForControllerIndex, isPicklistValueValidForController} from "./components/Combobox.js";
 
 // Constants
 const GET_FIELD_USAGE_LABEL = "Get field usage";
@@ -1429,7 +1429,6 @@ class FieldRow extends TableRow {
   saveDataValue(recordData) {
     if (this.isEditing()) {
       if (this.fieldDescribe && this.fieldDescribe.type === "boolean") {
-        // Native JSON boolean, not the string "true"/"false".
         recordData[this.fieldDescribe.name] = this.dataEditValue === "true";
       } else if (this.dataEditValue == "") {
         if (this.rowList.model.editMode != "create") {
@@ -1440,7 +1439,7 @@ class FieldRow extends TableRow {
       }
     }
   }
-  // --- Picklist / multipicklist / boolean combobox support ---------------
+  // ---------- Picklist / multipicklist / boolean combobox ---------------
 
   // Needs fieldDescribe.picklistValues to know what options to render, so
   // entityParticle-only rows (no full describe) keep using the textarea.
@@ -1482,7 +1481,10 @@ class FieldRow extends TableRow {
       return [];
     }
     if (fieldDescribe.type === "boolean") {
-      return [{label: "true", value: "true"}, {label: "false", value: "false"}];
+      return [
+        {value: "true", label: "true", title: "true"}, 
+        {value: "false", label: "false", title: "false"}
+      ];
     }
     if (fieldDescribe.type !== "picklist" && fieldDescribe.type !== "multipicklist") {
       return [];
@@ -1493,11 +1495,19 @@ class FieldRow extends TableRow {
       let controllerIndex = getControllerValueIndex(controllerRow && controllerRow.fieldDescribe, this.controllerCurrentValue());
       options = options.filter(pv => isValueValidForControllerIndex(pv.validFor, controllerIndex));
     }
-    options = options.map(pv => ({label: pv.label, value: pv.value}));
+    
+    // Selected = API (label), Hover = Label (title), Dropdown = Label (secondaryText)
+    options = options.map(pv => ({
+      value: pv.value,
+      label: pv.value, 
+      title: pv.label,
+      secondaryText: pv.label
+    }));
+    
     if (fieldDescribe.type === "picklist") {
       let currentValueIsBlank = this.dataTypedValue == null || this.dataTypedValue === "";
       if (fieldDescribe.nillable || currentValueIsBlank) {
-        options = [{label: "--None--", value: ""}, ...options];
+        options = [{value: "", label: "--None--", title: "--None--"}, ...options];
       }
     }
     return options;
@@ -1511,11 +1521,7 @@ class FieldRow extends TableRow {
     }
     let controllerRow = this.controllerFieldRow();
     let controllerIndex = getControllerValueIndex(controllerRow && controllerRow.fieldDescribe, this.controllerCurrentValue());
-    let picklistValues = fieldDescribe.picklistValues || [];
-    let isValueValid = v => {
-      let pv = picklistValues.find(p => p.value === v);
-      return !!pv && isValueValidForControllerIndex(pv.validFor, controllerIndex);
-    };
+    let isValueValid = v => isPicklistValueValidForController(fieldDescribe, v, controllerIndex);
     if (fieldDescribe.type === "multipicklist") {
       return value.split(";").filter(v => v !== "").every(isValueValid);
     }
@@ -2532,6 +2538,7 @@ class FieldValueCell extends React.Component {
               errorMessage: row.dependentPicklistError ? row.dependentPicklistErrorMessage() : null,
               ariaLabel: row.fieldName,
               placeholder: "--None--",
+              showSecondaryText: true,
               onChange: this.onComboChange,
               onCancel: () => {
                 row.dataEditValue = null;
