@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Logs Viewer` Fix UI and sorting related issues [issue #1321](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1321) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix autocomplete replacing only the text before the caret when picking a suggestion inside a word, which left the rest of the word behind [issue #1407](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1407) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix `IN (` not suggesting picklist values in the query editor until a quote is typed [issue #1411](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1411) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix Ctrl+Space inserting all the fields list inside WHERE/HAVING conditions [issue #1409](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1409) (contribution by [Prem Kumar](https://github.com/prem-k-r))
