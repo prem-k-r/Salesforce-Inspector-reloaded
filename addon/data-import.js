@@ -2595,7 +2595,8 @@ class ColumnMapper extends React.Component {
               column.columnValue = val;
               model.didUpdate();
             },
-            onBlur: this.onColumnValueBlur, onKeyDown: this.onColumnValueKeyDown, // to check
+            onBlur: this.onColumnValueBlur, 
+            onKeyDown: this.onColumnValueKeyDown,
           }),
           h("div", {className: "slds-size_4-of-12 slds-text-align_right", hidden: !column.columnError(), style: { paddingLeft: "0.5rem", flexShrink: 0 }},
             h("span", {className: "slds-text-color_error"}, column.columnError()), " ",

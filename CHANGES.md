@@ -2,7 +2,6 @@
 
 ## Version 2.1
 
-
 - `Popup` Add option to hide duplicate SIR popup in embedded iframes (Setup pages, reports, dashboards, Visualforce pages, etc.) [issue #1383](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1383) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix query editor text alignment, text wrap desync on scrollbars, and native search (Ctrl+F) scroll desync [issue #1380](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1380) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Add a Ctrl + ' (or Cmd + ') shortcut to the query editor to quickly wrap/unwrap selected text in single quotes [feature #1393](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1393) (contribution by [Prem Kumar](https://github.com/prem-k-r))
