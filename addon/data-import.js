@@ -2219,14 +2219,15 @@ export class App extends React.Component {
                                   h(Combobox, {
                                     id: "form-search-object",
                                     isSearchable: true,
+                                    isLoading: model.sobjectListLoading(),
                                     dropdownWidth: "calc(100% * 4/3)",
                                     showSecondaryText: true,
-                                    options: model.sobjectList().map(s => ({ 
+                                    options: model.sobjectList().map(s => ({
                                       value: s.name,            // API Name
                                       label: s.name,            // Primary display text
                                       title: s.label,           // Hover tooltip
                                       // Only show secondary text if the API name and Label are different
-                                      secondaryText: s.name !== s.label ? s.label : undefined 
+                                      secondaryText: s.name !== s.label ? s.label : undefined
                                     })),
                                     value: model.importType,
                                     disabled: model.isWorking(),
@@ -2568,11 +2569,11 @@ class ColumnMapper extends React.Component {
   }
   render() {
     let {model, column} = this.props;
-    
+   
     // Check if the column is skipped (starts with _)
     let isSkipped = column.isColumnSkipped() && model.greyOutSkippedColumns;
     let widthClass = column.columnError() ? "slds-size_8-of-12" : "slds-size_12-of-12";
-    
+   
     return h("div", {className: "slds-form-element__row"},
       h("div", {className: "slds-form-element slds-size_1-of-1"},
         h("label", {className: "slds-form-element__label"}, column.columnOriginalValue),
@@ -2582,8 +2583,8 @@ class ColumnMapper extends React.Component {
             style: isSkipped ? { opacity: 0.75 } : {},
             isSearchable: true,
             fixedDropdown: true,
-            options: model.columnList().map(s => ({ 
-              value: s.value, 
+            options: model.columnList().map(s => ({
+              value: s.value,
               label: s.value,         // Selected = API
               title: s.title,         // Hover = Label
               secondaryText: s.title  // Dropdown Hint = Label
