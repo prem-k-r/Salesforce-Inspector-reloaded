@@ -764,7 +764,7 @@ export class Model {
     this.confirmPopup = {
       text: importedRecords + " records will be " + actionVerb + "."
         + (skippedRecords > 0 ? " " + skippedRecords + " records will be skipped because they have __Status Succeeded or Failed." : ""),
-      note: this.isBulk() ? "Bulk API 2.0 provides results as downloadable CSV files rather than writing status back into the table below." : null
+      note: this.isBulk() ? "Bulk API 2.0 provides results as downloadable CSV files rather than writing status back into the table below. Empty cells are ignored when updating records. Use #N/A to clear a field." : null
     };
   }
 
@@ -884,7 +884,6 @@ export class Model {
     }
     this.bulkError = null;
     this.bulkMessage = null;
-    this.isBulkImportWorking = true;
     this.isBulkImportWorking = true;
     this.startBulkPolling();
   }
@@ -2324,7 +2323,7 @@ export class App extends React.Component {
                           h("div", {className: "slds-form-element"},
                             h("label", {className: "slds-form-element__label", htmlFor: "form-custom-headers"}, "Custom Headers"),
                             h("div", {className: "slds-form-element__control"},
-                              h("textarea", {id: "form-custom-headers", className: "slds-textarea", type: "textarea", rows: 1, placeholder: "Press ↓ for suggestions", value: model.customHeaders, onKeyDown: this.onCustomHeadersKeyPress, onChange: this.onCustomHeadersChange}),
+                              h("textarea", {id: "form-custom-headers", className: "slds-textarea", type: "textarea", rows: 1, placeholder: model.isBulk() ? "Not available with Bulk API 2.0" : "Press ↓ for suggestions", value: model.customHeaders, onKeyDown: this.onCustomHeadersKeyPress, onChange: this.onCustomHeadersChange, disabled: model.isBulk()}),
                             )
                           )
                         ),
