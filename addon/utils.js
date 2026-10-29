@@ -1,4 +1,4 @@
-import {sfConn, apiVersion} from "./inspector.js";
+import { sfConn, apiVersion } from "./inspector.js";
 
 // Browser polyfill for cross-browser compatibility
 if (typeof browser === "undefined") {
@@ -34,8 +34,8 @@ export class Constants {
   static GLOBAL_LINKS_KEY = "globalLinks";
   /** Shared definition for "Exclude users from search (org specific)" */
   static USER_SEARCH_EXCLUSIONS_CHECKBOXES = [
-    {label: " Exclude Portal users", name: "portal", stateKey: "excludePortalUsersFromSearch"},
-    {label: " Exclude Inactive users", name: "inactive", stateKey: "excludeInactiveUsersFromSearch"},
+    { label: " Exclude Portal users", name: "portal", stateKey: "excludePortalUsersFromSearch" },
+    { label: " Exclude Inactive users", name: "inactive", stateKey: "excludeInactiveUsersFromSearch" },
   ];
 }
 
@@ -173,7 +173,7 @@ export function utf8ByteLength(str) {
  * across multiple tabs using the 'storage' event.
  */
 export class BulkJobStore {
-  constructor(storageKey, {historyMax = 5, retentionDays = BULK_RESULTS_RETENTION_DAYS} = {}) {
+  constructor(storageKey, { historyMax = 5, retentionDays = BULK_RESULTS_RETENTION_DAYS } = {}) {
     this.storageKey = storageKey;
     this.historyKey = storageKey + "History";
     this.retentionDays = retentionDays;
@@ -208,7 +208,7 @@ export class BulkJobStore {
   // Merge a patch into the stored job. No-op if empty.
   update(patch) {
     const job = this.get();
-    return job ? this.set({...job, ...patch}) : null;
+    return job ? this.set({ ...job, ...patch }) : null;
   }
 
   clear() {
@@ -235,7 +235,7 @@ export class BulkJobStore {
   }
 
   forget(jobId) {
-    this.history.remove({jobId});
+    this.history.remove({ jobId });
     if (this.get()?.jobId === jobId) {
       this.clear();
     }
@@ -255,137 +255,6 @@ export class BulkJobStore {
     return () => removeEventListener("storage", listener);
   }
 }
-
-/**
- * Mapping of standard Salesforce objects to their name fields.
- * Objects with "Name" field are not included (assumed default).
- * Objects with null have no nameField property (e.g., Event, Task use Subject).
- * Objects with a string value have a different nameField than "Name".
- *
- * This list helps optimize queries by avoiding unnecessary describe API calls.
- */
-export const STANDARD_OBJECT_NAME_FIELDS = {
-  // Objects with non-standard name fields or no name field
-  "AccountContactRelation": null,
-  "AccountContactRole": null,
-  "AccountPartner": null,
-  "CampaignMember": null,
-  "CampaignMemberStatus": null,
-  "Case": "CaseNumber",
-  "CaseContactRole": null,
-  "CaseMilestone": null,
-  "CaseSolution": null,
-  "CaseStatus": "ApiName",
-  "ChangeRequest": "ChangeRequestNumber",
-  "ContentAsset": "DeveloperName",
-  "ContentBody": null,
-  "ContentDistributionView": null,
-  "ContentDocument": "Title",
-  "ContentDocumentLink": null,
-  "ContentDocumentSubscription": null,
-  "ContentFolderItem": null,
-  "ContentFolderLink": null,
-  "ContentFolderMember": null,
-  "ContentNote": "Title",
-  "ContentNotification": null,
-  "ContentTagSubscription": null,
-  "ContentTaxonomyRelatedTerm": null,
-  "ContentTaxonomyTermRelatedTerm": null,
-  "ContentUserSubscription": null,
-  "ContentVersion": "Title",
-  "ContentVersionComment": null,
-  "ContentVersionRating": null,
-  "ContentWorkspaceDoc": null,
-  "ContentWorkspaceMember": null,
-  "ContentWorkspaceSubscription": null,
-  "Contract": "ContractNumber",
-  "ContractContactRole": null,
-  "ContractGroupPlanAttribute": "AttributeName",
-  "ContractGrpPlanGrpClsAttr": "AttributeName",
-  "ContractLineItem": "LineItemNumber",
-  "ContractStatus": "ApiName",
-  "ContractType": "DeveloperName",
-  "ContractTypeConfig": null,
-  "Event": "Subject",
-  "Expense": "ExpenseNumber",
-  "ExpenseReport": "ExpenseReportNumber",
-  "ExpenseReportEntry": "ExpenseReportEntryNumber",
-  "GroupMember": null,
-  "LeadStatus": "ApiName",
-  "Note": "Title",
-  "OpportunityCompetitor": null,
-  "OpportunityContactRole": null,
-  "OpportunityHistory": null,
-  "OpportunityLineItemSchedule": null,
-  "OpportunityPartner": null,
-  "OpportunityRelatedDeleteLog": "DeleteLog",
-  "OpportunityStage": "ApiName",
-  "Order": "OrderNumber",
-  "OrderItem": "OrderItemNumber",
-  "OrderStatus": "ApiName",
-  "Partner": null,
-  "PartnerRole": "ApiName",
-  "ProductEntitlementTemplate": null,
-  "ProductItem": "ProductItemNumber",
-  "ProductItemTransaction": "ProductItemTransactionNumber",
-  "ProductRequest": "ProductRequestNumber",
-  "ProductRequestLineItem": "ProductRequestLineItemNumber",
-  "ProductRequired": "ProductRequiredNumber",
-  "ProductServiceCampaign": "ProductServiceCampaignName",
-  "ProductServiceCampaignItem": "ProductServiceCampaignItemNumber",
-  "ProductServiceCampaignItemStatus": "ApiName",
-  "ProductServiceCampaignStatus": "ApiName",
-  "ProductTransfer": "ProductTransferNumber",
-  "ProductWarrantyTerm": "ProductWarrantyTermNumber",
-  "QuoteLineItem": "LineNumber",
-  "ReturnOrder": "ReturnOrderNumber",
-  "ReturnOrderLineItem": "ReturnOrderLineItemNumber",
-  "ServiceAppointment": "AppointmentNumber",
-  "ServiceAppointmentCapacityUsage": "ServiceAppointmentCapacityUsageAutonumber",
-  "ServiceAppointmentStatus": "ApiName",
-  "ServiceCrewMember": "ServiceCrewMemberNumber",
-  "ServiceReport": "ServiceReportNumber",
-  "ServiceReportLayout": "MasterLabel",
-  "ServiceResourceCapacity": "CapacityNumber",
-  "ServiceResourceSkill": "SkillNumber",
-  "ServiceTerritoryLocation": "ServiceTerritoryLocationNumber",
-  "ServiceTerritoryMember": "MemberNumber",
-  "Shift": "ShiftNumber",
-  "ShiftStatus": "ApiName",
-  "Shipment": "ShipmentNumber",
-  "ShipmentItem": "ShipmentItemNumber",
-  "Skill": "MasterLabel",
-  "SkillRequirement": "SkillNumber",
-  "SkillType": "MasterLabel",
-  "Solution": "SolutionName",
-  "SolutionStatus": "ApiName",
-  "Task": "Subject",
-  "TaskPriority": "ApiName",
-  "TaskRelation": null,
-  "TaskStatus": "ApiName",
-  "TaskWhoRelation": null,
-  "TimeSheet": "TimeSheetNumber",
-  "TimeSheetEntry": "TimeSheetEntryNumber",
-  "TimeSlot": "TimeSlotNumber",
-  "TimelineObjectDefinition": "DeveloperName",
-  "Vote": null,
-  "WarrantyTerm": "WarrantyTermName",
-  "WorkAccess": null,
-  "WorkBadge": null,
-  "WorkCapacityAvailability": "WorkCapacityAvailNumber",
-  "WorkCapacityLimit": "WorkCapacityLimitNumber",
-  "WorkCapacityUsage": "WorkCapacityUsageNumber",
-  "WorkOrder": "WorkOrderNumber",
-  "WorkOrderLineItem": "LineItemNumber",
-  "WorkOrderLineItemStatus": "ApiName",
-  "WorkOrderStatus": "ApiName",
-  "WorkPlanSelectionRule": "WorkPlanSelectionRuleNumber",
-  "WorkPlanTemplateEntry": "WorkPlanTemplateEntryNumber",
-  "WorkStepStatus": "ApiName",
-  "WorkThanks": null,
-  // Custom metadata types ending with __mdt use "DeveloperName"
-  "CustomMetadataType": "DeveloperName", // For __mdt objects
-};
 
 /**
  * Determines if the org should be treated as production (for styling/warnings).
@@ -433,16 +302,16 @@ export function nullToEmptyString(value) {
   return (value == null) ? "" : value;
 }
 
-export function isOptionEnabled(optionName, optionsArray, defaultValue = true){
+export function isOptionEnabled(optionName, optionsArray, defaultValue = true) {
   const option = optionsArray?.find((element) => element.name == optionName);
-  if (option){
+  if (option) {
     return option.checked;
   }
   // If no option was found, use the feature's default value.
   return defaultValue;
 }
 
-export function isSettingEnabled(settingName, defaultValue = false){
+export function isSettingEnabled(settingName, defaultValue = false) {
   const value = localStorage.getItem(settingName);
   if (value === null) {
     return defaultValue;
@@ -572,7 +441,7 @@ export class PromptTemplate {
       isPreview: false,
       inputParams: {
         valueMap: Object.entries(params).reduce((acc, [key, value]) => {
-          acc[`Input:${key}`] = {value};
+          acc[`Input:${key}`] = { value };
           return acc;
         }, {})
       },
@@ -623,7 +492,7 @@ export class PromptTemplate {
  * @returns {Function} A bound spinFor method
  */
 export function createSpinForMethod(context) {
-  return function(promise) {
+  return function (promise) {
     context.spinnerCount++;
     promise
       .catch(err => {
@@ -649,7 +518,7 @@ export function createSpinForMethod(context) {
  */
 export function createChangeGuard() {
   let lastSignature;
-  return function(signature, fn) {
+  return function (signature, fn) {
     let changed = Array.isArray(signature)
       ? !Array.isArray(lastSignature) || signature.length !== lastSignature.length || signature.some((value, i) => value !== lastSignature[i])
       : signature !== lastSignature;
@@ -785,15 +654,15 @@ export function getSalesforceViewLink(sfHost, recordId, parentObjectIdentifier) 
  * for custom objects - never the type of the metadata record itself.
  */
 const OBJECT_MANAGER_PARENT_LOOKUP = {
-  "00N": {sobject: "CustomField", field: "TableEnumOrId"}, // Field
-  "00h": {sobject: "Layout", field: "TableEnumOrId"}, // Page Layout
-  "0M0": {sobject: "FlexiPage", field: "EntityDefinitionId"}, // Lightning Record Page
-  "00b": {sobject: "WebLink", field: "EntityDefinitionId"}, // Button / Link / Action
-  "0AH": {sobject: "CompactLayout", field: "SobjectType"}, // Compact Layout
-  "0IX": {sobject: "FieldSet", field: "EntityDefinitionId"}, // Field Set
-  "012": {sobject: "RecordType", field: "SobjectType"}, // Record Type
-  "01q": {sobject: "ApexTrigger", field: "TableEnumOrId"}, // Apex Trigger
-  "03d": {sobject: "ValidationRule", field: "EntityDefinitionId"}, // Validation Rule
+  "00N": { sobject: "CustomField", field: "TableEnumOrId" }, // Field
+  "00h": { sobject: "Layout", field: "TableEnumOrId" }, // Page Layout
+  "0M0": { sobject: "FlexiPage", field: "EntityDefinitionId" }, // Lightning Record Page
+  "00b": { sobject: "WebLink", field: "EntityDefinitionId" }, // Button / Link / Action
+  "0AH": { sobject: "CompactLayout", field: "SobjectType" }, // Compact Layout
+  "0IX": { sobject: "FieldSet", field: "EntityDefinitionId" }, // Field Set
+  "012": { sobject: "RecordType", field: "SobjectType" }, // Record Type
+  "01q": { sobject: "ApexTrigger", field: "TableEnumOrId" }, // Apex Trigger
+  "03d": { sobject: "ValidationRule", field: "EntityDefinitionId" }, // Validation Rule
 };
 
 // recordId -> resolved parent object (or null). Metadata doesn't change which
@@ -839,130 +708,12 @@ export async function getObjectManagerParent(recordId) {
 export function downloadCsvFile(csvContent, filename) {
   // Add UTF-8 BOM for Excel compatibility with Hebrew and other non-Latin characters
   const BOM = localStorage.getItem("useBomForCsvExport") === "true" ? "\uFEFF" : "";
-  const blob = new Blob([BOM + csvContent], {type: "text/csv;charset=utf-8;"});
+  const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
 
   const downloadAnchor = document.createElement("a");
   downloadAnchor.download = filename;
   downloadAnchor.href = window.URL.createObjectURL(blob);
   downloadAnchor.click();
-}
-
-/**
- * Downloads data as an XLSX (Excel) file using SheetJS
- * @param {Array<Array>} dataArray - 2D array of the table data
- * @param {string} filename - The filename for the downloaded file
- */
-export function downloadXlsxFile(dataArray, filename) {
-  if (typeof XLSX === 'undefined') {
-    console.error("SheetJS (xlsx) library is not loaded.");
-    return;
-  }
-
-  // Use a slight timeout so the main thread isn't immediately blocked.
-  // This allows the browser to register the button click visually.
-  setTimeout(() => {
-    try {
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(dataArray);
-      XLSX.utils.book_append_sheet(wb, ws, "Exported Data");
-      XLSX.writeFile(wb, filename);
-    } catch (error) {
-      console.error("Error generating XLSX file:", error);
-    }
-  }, 100);
-}
-
-/**
- * Get the name field for a Salesforce object.
- * Checks the standard objects mapping first, then returns null to indicate
- * that the describe API should be used to determine the name field.
- *
- * @param {string} sobjectName - The API name of the Salesforce object
- * @returns {string|null|undefined} The name field API name, null if no name field exists, or undefined if not in the mapping
- */
-export function getStandardObjectNameField(sobjectName) {
-  // Check direct mapping first
-  if (sobjectName in STANDARD_OBJECT_NAME_FIELDS) {
-    return STANDARD_OBJECT_NAME_FIELDS[sobjectName];
-  }
-
-  // Check for custom metadata types (end with __mdt)
-  if (sobjectName.endsWith("__mdt")) {
-    return "DeveloperName";
-  }
-
-  // Not in the mapping - return N/A to indicate describe API should be used
-  return "N/A";
-}
-
-/**
- * In-memory cache of sobject field describes: sobjectName (lowercase) -> Map(fieldName
- * lowercase -> {type, referenceTo, relationshipName}). Lives only for the page's lifetime
- * (not persisted like DataCache), since it exists to avoid duplicate describe calls within
- * a session rather than to survive reloads.
- */
-const fieldDescribeCache = new Map();
-
-/**
- * Fetches (and caches) field describe info for an sobject, keyed by lowercase field name.
- * Used to determine real field types, e.g. so Smart Paste in Data Export can quote values
- * correctly for Text fields instead of guessing from the pasted value's shape.
- * Returns null on failure (invalid/inaccessible object, network error, etc.) instead of
- * throwing, so callers can fall back to their own logic.
- * @param {string} sobjectName - API name of the sobject
- * @returns {Promise<Map<string, {type: string, referenceTo: string[]|null, relationshipName: string|null}>|null>}
- */
-export async function getSobjectFieldsDescribe(sobjectName) {
-  if (!sobjectName) return null;
-  const cacheKey = sobjectName.toLowerCase();
-  if (fieldDescribeCache.has(cacheKey)) {
-    return fieldDescribeCache.get(cacheKey);
-  }
-  try {
-    const describe = await sfConn.rest(`/services/data/v${apiVersion}/sobjects/${sobjectName}/describe/`);
-    const fieldsMap = new Map(describe.fields.map(f => [f.name.toLowerCase(), {
-      type: f.type,
-      referenceTo: f.referenceTo && f.referenceTo.length > 0 ? f.referenceTo : null,
-      relationshipName: f.relationshipName ? f.relationshipName.toLowerCase() : null
-    }]));
-    fieldDescribeCache.set(cacheKey, fieldsMap);
-    return fieldsMap;
-  } catch (err) {
-    console.error(`getSobjectFieldsDescribe: failed to describe "${sobjectName}"`, err);
-    return null; // Not cached, so a transient failure doesn't permanently block later lookups
-  }
-}
-
-/**
- * Resolves the Salesforce field type for a field path on an sobject, walking through
- * relationships for dotted paths (e.g. "Owner.Profile.Name"). Returns null if any part of
- * the path can't be resolved (unknown field, polymorphic relationship, describe failure,
- * etc.) so callers can fall back to their own heuristic instead of guessing.
- * @param {string} sobjectName - API name of the base sobject
- * @param {string} fieldPath - Field name, optionally dotted through relationships
- * @returns {Promise<string|null>} Salesforce field type (e.g. "string", "boolean", "double", "date"), or null if unresolved
- */
-export async function getFieldType(sobjectName, fieldPath) {
-  if (!sobjectName || !fieldPath) return null;
-  const parts = fieldPath.split(".");
-  let currentObject = sobjectName;
-
-  for (let i = 0; i < parts.length - 1; i++) {
-    const fieldsMap = await getSobjectFieldsDescribe(currentObject);
-    if (!fieldsMap) return null;
-    const relPart = parts[i].toLowerCase();
-    const relField = [...fieldsMap.values()].find(f => f.relationshipName === relPart);
-    // Bail out on unresolved or polymorphic relationships (e.g. Task.Who / Task.What)
-    if (!relField || !relField.referenceTo || relField.referenceTo.length !== 1) {
-      return null;
-    }
-    currentObject = relField.referenceTo[0];
-  }
-
-  const fieldsMap = await getSobjectFieldsDescribe(currentObject);
-  if (!fieldsMap) return null;
-  const finalField = fieldsMap.get(parts[parts.length - 1].toLowerCase());
-  return finalField ? finalField.type : null;
 }
 
 /**
@@ -1102,7 +853,7 @@ export class DataCache {
       if (cached.compressed) {
         data = await this._decompressGzip(cached.data);
       }
-      return {data, lastFetch: cached.lastFetch};
+      return { data, lastFetch: cached.lastFetch };
     } catch (e) {
       console.error(`Error reading large data cache for ${cacheKey}:`, e);
       return null;
@@ -1228,7 +979,7 @@ export class DataCache {
    */
   static async _compressGzip(data) {
     const json = JSON.stringify(data);
-    const blob = new Blob([json], {type: "application/json"});
+    const blob = new Blob([json], { type: "application/json" });
     const stream = blob.stream().pipeThrough(new CompressionStream("gzip"));
     const compressedBlob = await new Response(stream).blob();
     const buffer = await compressedBlob.arrayBuffer();
@@ -1272,7 +1023,7 @@ export class DataCache {
     }
 
     try {
-      await browser.storage.local.set({[storageKey]: cacheEntry});
+      await browser.storage.local.set({ [storageKey]: cacheEntry });
       return true;
     } catch (e) {
       console.error(`Error storing large data cache for ${cacheKey}:`, e);
@@ -1388,7 +1139,7 @@ export async function getSobjectsList(sfHost) {
       const sobjectsList = cached.data ?? [];
 
       //if we don't do the Preload SObjects before popup opens, we will refresh the cache in background
-      if (!isSettingEnabled(Constants.PRELOAD_SOBJECTS_BEFORE_POPUP)){
+      if (!isSettingEnabled(Constants.PRELOAD_SOBJECTS_BEFORE_POPUP)) {
         const lastFetch = cached.lastFetch ?? null;
 
         // Return cached data immediately, refresh in background
@@ -1485,8 +1236,8 @@ async function fetchSobjectsList(sfHost, currentFetch, cacheEnabled, cachedSobje
         //https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_describeGlobal.htm
         //https://developer.salesforce.com/docs/atlas.en-us.222.0.api_rest.meta/api_rest/describe_global_with_ifmodified_header.htm
         //If-Modified-Since: <date> format EEE, dd MMM yyyy HH:mm:ss z
-        const headers = lastFetch ? {"If-Modified-Since": new Date(lastFetch).toGMTString()} : {};
-        const describe = await sfConn.rest(url, {headers});
+        const headers = lastFetch ? { "If-Modified-Since": new Date(lastFetch).toGMTString() } : {};
+        const describe = await sfConn.rest(url, { headers });
         //if no modification, we receive a 304 status code and an empty response, so process only if describe is not empty
         if (describe) {
           for (const sobject of describe.sobjects) {
@@ -1581,7 +1332,7 @@ async function fetchSobjectsList(sfHost, currentFetch, cacheEnabled, cachedSobje
       await DataCache.setCachedData(Constants.CACHE_SOBJECTS_LIST, sfHost, sobjectsList, true, true, currentFetch, true);
       //dispatch event when delta cache is set
       window.dispatchEvent(new CustomEvent(Constants.SOBJECTS_LIST_REFRESHED_EVENT, {
-        detail: {sfHost, sobjectsList}
+        detail: { sfHost, sobjectsList }
       }));
     }
 
@@ -1599,9 +1350,9 @@ async function fetchSobjectsList(sfHost, currentFetch, cacheEnabled, cachedSobje
  */
 export function isRecordId(recordId) {
   return typeof recordId === "string"
-       && /^[a-zA-Z0-9]{15,18}$/.test(recordId)
-       && !recordId.startsWith("000")
-       && /[0-9]/.test(recordId);
+    && /^[a-zA-Z0-9]{15,18}$/.test(recordId)
+    && !recordId.startsWith("000")
+    && /[0-9]/.test(recordId);
 }
 
 /**

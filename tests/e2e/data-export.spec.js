@@ -1,15 +1,15 @@
-import {test, expect} from "./fixtures";
+import { test, expect } from "./fixtures";
 import {
   TEST_CONSTANTS,
   injectSessionData,
   waitSuccessfulHttpResponse
 } from "./test-helpers";
-import {routeMock} from "./test-mock";
+import { routeMock } from "./test-mock";
 
 test.describe("Data Export", () => {
-  const {mockHost, mockToken, apiVersion} = TEST_CONSTANTS;
+  const { mockHost, mockToken, apiVersion } = TEST_CONSTANTS;
 
-  test.beforeEach(async ({context}) => {
+  test.beforeEach(async ({ context }) => {
     // 1. Inject Fake Session Data
     await injectSessionData(context, {
       host: mockHost,
@@ -34,11 +34,11 @@ test.describe("Data Export", () => {
     });
   });
 
-  test("Execute Simple Export", async ({page, context, extensionId}) => {
+  test("Execute Simple Export", async ({ page, context, extensionId }) => {
     await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
 
     // Wait for the query box to appear
-    await page.waitForSelector("textarea#query", {timeout: 2000});
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
 
     // Enter Query
     const queryInput = page.locator("textarea#query");
@@ -51,7 +51,7 @@ test.describe("Data Export", () => {
 
     // Verify Results
     // Wait for the status to show completion
-    await expect(page.locator(".result-status")).toContainText("Exported 2 records", {timeout: 2000});
+    await expect(page.locator(".result-status")).toContainText("Exported 2 records", { timeout: 2000 });
 
     // Wait for the table to appear (it's inside #result-area)
     const resultTable = page.locator("#result-area table");
@@ -71,9 +71,9 @@ test.describe("Data Export", () => {
     await expect(firstDataRow.locator("td").nth(2)).toContainText("Test Account 1");
   });
 
-  test("Autocomplete Suggestions", async ({page, context, extensionId}) => {
+  test("Autocomplete Suggestions", async ({ page, context, extensionId }) => {
     await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
-    await page.waitForSelector("textarea#query", {timeout: 2000});
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
 
     const queryInput = page.locator("textarea#query");
 
@@ -112,7 +112,7 @@ test.describe("Data Export", () => {
       el.selectionStart = 14;
       el.selectionEnd = 14;
       // Trigger input event to notify app
-      el.dispatchEvent(new Event("input", {bubbles: true}));
+      el.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
     // Now wait for field suggestions
@@ -120,25 +120,25 @@ test.describe("Data Export", () => {
 
     await expect(page.locator(".autocomplete-results")).toContainText("Name");
     // Click suggestion - target the link element specifically
-    await page.locator(".autocomplete-results a").filter({hasText: "Name"}).first().click();
+    await page.locator(".autocomplete-results a").filter({ hasText: "Name" }).first().click();
 
     // Autocomplete adds ", " after fields when not last?
     // "SELECT Id, Name,  FROM Account"
     await expect(queryInput).toHaveValue("SELECT Id, Name FROM Account");
   });
 
-  test("Copy as CSV", async ({page, context, extensionId}) => {
+  test("Copy as CSV", async ({ page, context, extensionId }) => {
     // Grant clipboard permissions to browser context
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
-    await page.waitForSelector("textarea#query", {timeout: 2000});
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
 
     // Run a query first
     const queryInput = page.locator("textarea#query");
     await queryInput.fill("SELECT Id, Name FROM Account WHERE Name like 'Test Account%' ORDER BY Name");
     await page.click("button:has-text('Run Export')");
-    await expect(page.locator(".result-status")).toContainText("Exported 2 records", {timeout: 2000});
+    await expect(page.locator(".result-status")).toContainText("Exported 2 records", { timeout: 2000 });
 
     // Wait for the table to appear (it's inside #result-area)
     const resultTable = page.locator("#result-area table");
@@ -161,19 +161,83 @@ test.describe("Data Export", () => {
     expect(clipboardContent).toContain('"' + id + '","' + name + '"');
   });
 
-  test("Copy as Markdown", async ({page, context, extensionId}) => {
+  test("Query Editor Uses SOQL, SOSL and GraphQL Colouring", async ({ page, extensionId }) => {
+    await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
+
+    // Objects get their own token and field names that clash with SQL keywords stay plain.
+    const query = page.locator("textarea#query");
+    await query.fill("SELECT Id, Status FROM Case ORDER BY Type");
+    const highlight = page.locator(".query-highlight");
+    await expect(highlight.locator(".token.sobject")).toHaveText("Case");
+    await expect(highlight.locator(".token.keyword")).toHaveText(["SELECT", "FROM", "ORDER BY"]);
+
+    // Metadata is a field outside WITH METADATA, and a SOQL function after "), " is
+    // not a further object the way it is in SOSL RETURNING.
+    await query.fill("SELECT Metadata, toLabel(Status), convertCurrency(Amount) FROM Opportunity");
+    await expect(highlight.locator(".token.sobject")).toHaveText(["Opportunity"]);
+    await expect(highlight.locator(".token.keyword")).toHaveText(["SELECT", "toLabel", "convertCurrency", "FROM"]);
+
+    await query.fill("FIND {Acme} IN ALL FIELDS RETURNING Account(Id), Contact(Id)");
+    await expect(highlight.locator(".token.sobject")).toHaveText(["Account", "Contact"]);
+
+    // A query starting with "{" is sent to the GraphQL endpoint, so it uses the GraphQL grammar, not SQL's
+    await query.fill("{\n\tuiapi {\n\t\tquery {\n\t\t\tContact {\n\t\t\t\tedges {\n\t\t\t\t\tnode {\n\t\t\t\t\t\tId\n\t\t\t\t\t\tName { value }\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}");
+    await expect(highlight.locator(".token.keyword")).toHaveText(["query"]);
+    await expect(highlight.locator(".token.property")).toHaveText(["Id", "value"]);
+    await expect(highlight.locator(".token.sobject")).toHaveCount(0);
+
+    // A full operation, as in the Salesforce GraphQL examples, is GraphQL too
+    await query.fill("query accounts {\n\tuiapi {\n\t\tquery {\n\t\t\tAccount {\n\t\t\t\tedges {\n\t\t\t\t\tnode {\n\t\t\t\t\t\tId\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}");
+    await expect(highlight.locator(".token.keyword")).toHaveText(["query", "query"]);
+    await expect(highlight.locator(".token.property")).toHaveText(["Id"]);
+  });
+
+  test("Execute GraphQL Export, shorthand and full operation", async ({ page, context, extensionId }) => {
+    const sentQueries = [];
+    // Registered after the generic mock, so it takes precedence for the GraphQL endpoint (requests carry a "?cache=" parameter)
+    await context.route(new RegExp(`/services/data/v${apiVersion}/graphql(\\?|$)`), async route => {
+      sentQueries.push(route.request().postDataJSON().query);
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { uiapi: { query: { Account: { edges: [{ node: { Id: "001000000000001AAA", Name: { value: "Acme" } } }] } } } }, errors: [] })
+      });
+    });
+    await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
+
+    const selection = "uiapi { query { Account { edges { node { Id Name { value } } } } } }";
+    const queries = [
+      // Query template shorthand: the extension adds the operation name
+      { typed: `{ ${selection} }`, sent: `query objects { ${selection} }` },
+      // Salesforce documentation example: sent unchanged
+      { typed: `query accounts { ${selection} }`, sent: `query accounts { ${selection} }` }
+    ];
+    for (const { typed, sent } of queries) {
+      await page.locator("textarea#query").fill(typed);
+      await page.click("button:has-text('Run Export')");
+
+      await expect(page.locator(".result-status")).toContainText("Exported 1 record", { timeout: 2000 });
+      await expect(page.locator("#result-area table tr").nth(1).locator("td").nth(2)).toHaveText("Acme");
+      expect(sentQueries.at(-1)).toBe(sent);
+    }
+    expect(sentQueries).toHaveLength(2);
+  });
+
+  test("Copy as Markdown", async ({ page, context, extensionId }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
-    await page.waitForSelector("textarea#query", {timeout: 2000});
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
     await page.evaluate(() => localStorage.setItem("hideExportButtonsOption", JSON.stringify([
-      {name: "export-markdown", checked: true}
+      { name: "export-markdown", checked: true }
     ])));
     await page.reload();
-    await page.waitForSelector("textarea#query", {timeout: 2000});
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
     await page.locator("textarea#query").fill("SELECT Id, Name FROM Account WHERE Name like 'Test Account%' ORDER BY Name");
     await page.click("button:has-text('Run Export')");
-    await expect(page.locator(".result-status")).toContainText("Exported 2 records", {timeout: 2000});
+    await expect(page.locator(".result-status")).toContainText("Exported 2 records", { timeout: 2000 });
 
     const resultTable = page.locator("#result-area table");
     await expect(resultTable).toBeVisible();
@@ -189,19 +253,19 @@ test.describe("Data Export", () => {
     expect(clipboardContent).toContain(`| ${id} | ${name} |`);
   });
 
-  test("Copy format buttons follow Data Export settings", async ({page, extensionId}) => {
+  test("Copy format buttons follow Data Export settings", async ({ page, extensionId }) => {
     await page.goto(`chrome-extension://${extensionId}/data-export.html?host=${mockHost}`);
-    await page.waitForSelector("textarea#query", {timeout: 2000});
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
 
     await expect(page.locator("button:has-text('Copy (JSON)')")).toBeVisible();
     await expect(page.locator("button:has-text('Copy (Markdown)')")).toHaveCount(0);
 
     await page.evaluate(() => localStorage.setItem("hideExportButtonsOption", JSON.stringify([
-      {name: "export-json", checked: false},
-      {name: "export-markdown", checked: true}
+      { name: "export-json", checked: false },
+      { name: "export-markdown", checked: true }
     ])));
     await page.reload();
-    await page.waitForSelector("textarea#query", {timeout: 2000});
+    await page.waitForSelector("textarea#query", { timeout: 2000 });
 
     await expect(page.locator("button:has-text('Copy (JSON)')")).toHaveCount(0);
     await expect(page.locator("button:has-text('Copy (Markdown)')")).toBeVisible();

@@ -1,10 +1,10 @@
 /* global React ReactDOM */
-import {sfConn, apiVersion} from "./inspector.js";
-import {getLinkTarget, nullToEmptyString, isOptionEnabled, PromptTemplate, Constants, UserInfoModel, createSpinForMethod, createChangeGuard, copyToClipboard, downloadCsvFile, downloadXlsxFile, StorageHistory, getFieldType, BulkJobStore, BULK_STATE, isBulkJobTerminal} from "./utils.js";
+import { sfConn, apiVersion } from "./inspector.js";
+import { getLinkTarget, nullToEmptyString, isOptionEnabled, PromptTemplate, Constants, UserInfoModel, createSpinForMethod, createChangeGuard, copyToClipboard, downloadCsvFile, downloadXlsxFile, StorageHistory, getFieldType, BulkJobStore, BULK_STATE, isBulkJobTerminal } from "./utils.js";
 /* global initButton */
-import {Enumerable, DescribeInfo, initScrollTable, s} from "./data-load.js";
-import {PageHeader} from "./components/PageHeader.js";
-import {csvParse} from "./csv-parse.js";
+import { Enumerable, DescribeInfo, initScrollTable, s } from "./data-load.js";
+import { PageHeader } from "./components/PageHeader.js";
+import { csvParse } from "./csv-parse.js";
 
 // Prism re-tokenizes and rewrites the whole highlight layer on every keystroke. Past this length the
 // cost (mostly the innerHTML write/layout, not the tokenizing itself) makes typing feel unresponsive,
@@ -20,9 +20,9 @@ const API_MODE = {
   BULK: "Bulk"
 };
 const apiModeOptions = [
-  {value: API_MODE.STANDARD, label: "Standard", title: "Query regular data through the REST API"},
-  {value: API_MODE.TOOLING, label: "Tooling API", title: "With the tooling API you can query more metadata, but you cannot query regular data"},
-  {value: API_MODE.BULK, label: "Bulk API 2.0", title: "Run the query asynchronously and download the result as a CSV file. Best for large result sets"}
+  { value: API_MODE.STANDARD, label: "Standard", title: "Query regular data through the REST API" },
+  { value: API_MODE.TOOLING, label: "Tooling API", title: "With the tooling API you can query more metadata, but you cannot query regular data" },
+  { value: API_MODE.BULK, label: "Bulk API 2.0", title: "Run the query asynchronously and download the result as a CSV file. Best for large result sets" }
 ];
 
 // Gets API mode for history entries, falling back to useToolingApi for older saves.
@@ -42,6 +42,36 @@ function createQueryHistory(storageKey, max) {
     sortComparator: isSaved ? (a, b) => (a.query > b.query ? 1 : b.query > a.query ? -1 : 0) : null,
     addToFront: true
   });
+}
+
+/**
+ * Whether a Data Export query is GraphQL: either the "{ uiapi { ... } }" shorthand of the
+ * query templates, or a full operation such as "query accounts { uiapi { ... } }" as in the
+ * Salesforce GraphQL examples. SOQL and SOSL never start with either.
+ * @param {string} query
+ * @returns {boolean}
+ */
+function isGraphqlQuery(query) {
+  return /^(?:\{|query\b)/.test(query.trimStart());
+}
+
+/**
+ * Picks the Prism language for a Data Export query: SELECT is SOQL and FIND is SOSL
+ * (both from lib/prism/prism-sf.js), GraphQL as detected by isGraphqlQuery (lib/prism/prism.js),
+ * the same rule Data Export uses to send it to the GraphQL endpoint. Anything else
+ * keeps plain SQL.
+ * @param {string} query
+ * @returns {"soql"|"sosl"|"graphql"|"sql"}
+ */
+function queryLanguage(query) {
+  const start = query.trimStart();
+  if (/^select\b/i.test(start)) {
+    return "soql";
+  }
+  if (/^find\b/i.test(start)) {
+    return "sosl";
+  }
+  return isGraphqlQuery(start) ? "graphql" : "sql";
 }
 
 function isEditableElement(element) {
@@ -168,7 +198,7 @@ function findSingleSoqlInClause(value) {
     if (closingIndex == -1 || clause != null) {
       return null;
     }
-    clause = {openingIndex, closingIndex};
+    clause = { openingIndex, closingIndex };
     index = closingIndex;
   }
   return clause;
@@ -269,7 +299,7 @@ class Model {
   static BULK_POLL_INTERVAL_MS = 10000;
   static BULK_POLL_MAX_FAILURES = 5; // Stop polling after consecutive failures
 
-  constructor({sfHost, args}) {
+  constructor({ sfHost, args }) {
     this.sfHost = sfHost;
     this.customFaviconColor = localStorage.getItem(this.sfHost + "_customFavicon") || "";
     this.orgName = this.sfHost.split(".")[0]?.toUpperCase() || "";
@@ -282,7 +312,7 @@ class Model {
     this.spinFor = createSpinForMethod(this);
 
     this.describeInfo = new DescribeInfo(this.spinFor.bind(this), () => {
-      this.queryAutocompleteHandler({newDescribe: true});
+      this.queryAutocompleteHandler({ newDescribe: true });
       this.didUpdate();
     });
     this.sfLink = "https://" + sfHost;
@@ -292,11 +322,11 @@ class Model {
     this.queryApiMode = API_MODE.STANDARD;
     this.prefHideRelations = localStorage.getItem("hideObjectNameColumnsDataExport") == "true"; // default to false
     this.prefPreventLineWrap = localStorage.getItem("preventLineWrapDataExport") !== "false"; // default to true (matches v1.27 behavior)
-    this.autocompleteResults = {sobjectName: "", title: "\u00A0", results: []};
+    this.autocompleteResults = { sobjectName: "", title: "\u00A0", results: [] };
     this.autocompleteClick = null;
     this.isWorking = false;
     this.isBulkWorking = false; // Separate flag so bulk jobs don't block Standard/Tooling queries in other tabs
-    this.bulkJobStore = new BulkJobStore(`${this.sfHost}_bulkExportJob`, {historyMax: this.bulkJobHistoryMax()});
+    this.bulkJobStore = new BulkJobStore(`${this.sfHost}_bulkExportJob`, { historyMax: this.bulkJobHistoryMax() });
     this.bulkJob = this.bulkJobStore.get();
     this.bulkPollTimer = null;
     this.bulkPollFailures = 0;
@@ -397,22 +427,24 @@ class Model {
     this.exportedData.updateVisibility();
     this.updatedExportedData();
   }
-  setQueryMethod(data, query, vm){
+  setQueryMethod(data, query, vm) {
     let method;
     let queryParams = "/?q=" + encodeURIComponent(query);
-    const baseParams = {progressHandler: vm.exportProgress};
+    const baseParams = { progressHandler: vm.exportProgress };
     let params = baseParams;
 
-    if (data.isTooling){
+    if (data.isTooling) {
       method = "tooling/query";
-    } else if (this.queryAll){
+    } else if (this.queryAll) {
       method = "queryAll";
-    } else if (this.queryInput.value.toLowerCase().startsWith("find")){
+    } else if (this.queryInput.value.toLowerCase().startsWith("find")) {
       method = "search";
-    } else if (this.queryInput.value.trim().startsWith("{")){
+    } else if (isGraphqlQuery(query)) {
       method = "graphql";
       queryParams = "";
-      params = {...baseParams, method: "POST", body: {"query": "query objects " + query}};
+      // The "{ ... }" shorthand of the query templates gets an operation name, a full "query accounts { ... }" is sent as is
+      const operation = query.trimStart().startsWith("{") ? "query objects " + query : query;
+      params = { ...baseParams, method: "POST", body: { "query": operation } };
     } else {
       method = "query";
     }
@@ -512,7 +544,7 @@ class Model {
       batchStats = `Batch Performance: ${avg}, ${min}, ${max}`;
       batchCount = `${batches} Batches / `;
     }
-    return {text: `${batchCount}${this.totalTime.toFixed(1)}ms`, batchStats};
+    return { text: `${batchCount}${this.totalTime.toFixed(1)}ms`, batchStats };
   }
   clearHistory() {
     this.queryHistory.clear();
@@ -545,7 +577,7 @@ class Model {
   }
   // `useToolingApi` is kept for backwards compatibility with older history entries.
   historyEntryFor(query) {
-    return {query, apiMode: this.queryApiMode, useToolingApi: this.isTooling()};
+    return { query, apiMode: this.queryApiMode, useToolingApi: this.isTooling() };
   }
   getQueryToSave() {
     return this.queryName != "" ? this.queryName + ":" + this.queryInput.value.trim() : this.queryInput.value.trim();
@@ -559,8 +591,8 @@ class Model {
   canDelete() {
     //In order to allow deletion, we should have at least 1 element and the Id field should have been included in the query
     return this.exportedData
-          && (this.exportedData.countOfVisibleRecords === null /* no filtering has been done yet*/ || this.exportedData.countOfVisibleRecords > 0)
-          && this.exportedData.records.length < 20001 && !this.exportStatus.includes("Exporting") && this.exportedData?.table?.at(0)?.find(header => header.toLowerCase() === "id");
+      && (this.exportedData.countOfVisibleRecords === null /* no filtering has been done yet*/ || this.exportedData.countOfVisibleRecords > 0)
+      && this.exportedData.records.length < 20001 && !this.exportStatus.includes("Exporting") && this.exportedData?.table?.at(0)?.find(header => header.toLowerCase() === "id");
   }
   copyAsExcel() {
     copyToClipboard(this.exportedData.csvSerialize("\t"));
@@ -575,7 +607,7 @@ class Model {
   copyAsMarkdown() {
     copyToClipboard(this.exportedData.markdownSerialize());
   }
-  downloadAsCsv(){
+  downloadAsCsv() {
     const csvContent = this.exportedData.csvSerialize(this.separator);
     const filename = `${this.exportedData.records[0]?.attributes.type}-${new Date().toLocaleDateString()}.csv`;
     downloadCsvFile(csvContent, filename);
@@ -656,8 +688,8 @@ class Model {
       vm.autocompleteProgress.abort();
     }
 
-    vm.autocompleteClick = ({value, suffix, link}) => {
-      if (link){
+    vm.autocompleteClick = ({ value, suffix, link }) => {
+      if (link) {
         window.open(link, "_blank");
       } else {
         vm.queryInput.focus();
@@ -706,7 +738,7 @@ class Model {
       tokenEnd += query.substring(selEnd).match(/^[a-zA-Z0-9_]*/)[0].length;
     }
 
-    function sortRank({value, title}) {
+    function sortRank({ value, title }) {
       let i = 0;
       if (value.toLowerCase() == searchTerm.toLowerCase()) {
         return i;
@@ -815,7 +847,7 @@ class Model {
       if (scope.parent) {
         let parentObjName = getScopeSobjectName(scope.parent);
         if (parentObjName) {
-          let {sobjectDescribe: parentDescribe} = vm.describeInfo.describeSobject(useToolingApi, parentObjName);
+          let { sobjectDescribe: parentDescribe } = vm.describeInfo.describeSobject(useToolingApi, parentObjName);
           if (parentDescribe && parentDescribe.childRelationships) {
             let rel = parentDescribe.childRelationships.find(r => (r.relationshipName && r.relationshipName.toLowerCase() === relOrObjName.toLowerCase()) || (r.childSObject && r.childSObject.toLowerCase() === relOrObjName.toLowerCase()));
             if (rel && rel.childSObject) {
@@ -832,7 +864,7 @@ class Model {
       if (activeScope && activeScope.parent) {
         let parentObjName = getScopeSobjectName(activeScope.parent);
         if (parentObjName) {
-          let {sobjectDescribe: parentDescribe} = vm.describeInfo.describeSobject(useToolingApi, parentObjName);
+          let { sobjectDescribe: parentDescribe } = vm.describeInfo.describeSobject(useToolingApi, parentObjName);
           if (parentDescribe && parentDescribe.childRelationships) {
             vm.autocompleteResults = {
               sobjectName: parentObjName,
@@ -854,7 +886,7 @@ class Model {
           }
         }
       }
-      let {globalStatus, globalDescribe} = vm.describeInfo.describeGlobal(useToolingApi);
+      let { globalStatus, globalDescribe } = vm.describeInfo.describeGlobal(useToolingApi);
       if (!globalDescribe) {
         switch (globalStatus) {
           case "loading":
@@ -868,7 +900,7 @@ class Model {
             vm.autocompleteResults = {
               sobjectName: "",
               title: "Loading metadata failed.",
-              results: [{value: "Retry", title: "Retry"}]
+              results: [{ value: "Retry", title: "Retry" }]
             };
             vm.autocompleteClick = vm.autocompleteReload.bind(vm);
             return;
@@ -886,7 +918,7 @@ class Model {
         title: "Objects suggestions:",
         results: new Enumerable(globalDescribe.sobjects)
           .filter(sobjectDescribe => sobjectDescribe.name.toLowerCase().includes(searchTerm.toLowerCase()) || sobjectDescribe.label.toLowerCase().includes(searchTerm.toLowerCase()))
-          .map(sobjectDescribe => ({value: sobjectDescribe.name, title: sobjectDescribe.label, suffix: " ", rank: 1, autocompleteType: "object", dataType: ""}))
+          .map(sobjectDescribe => ({ value: sobjectDescribe.name, title: sobjectDescribe.label, suffix: " ", rank: 1, autocompleteType: "object", dataType: "" }))
           .toArray()
           .sort(resultsSort)
       };
@@ -932,7 +964,7 @@ class Model {
       }
     }
     vm.updateCurrentTabName(sobjectName);
-    let {sobjectStatus, sobjectDescribe} = vm.describeInfo.describeSobject(useToolingApi, sobjectName);
+    let { sobjectStatus, sobjectDescribe } = vm.describeInfo.describeSobject(useToolingApi, sobjectName);
     if (!sobjectDescribe) {
       switch (sobjectStatus) {
         case "loading":
@@ -946,7 +978,7 @@ class Model {
           vm.autocompleteResults = {
             sobjectName,
             title: "Loading " + sobjectName + " metadata failed.",
-            results: [{value: "Retry", title: "Retry"}]
+            results: [{ value: "Retry", title: "Retry" }]
           };
           vm.autocompleteClick = vm.autocompleteReload.bind(vm);
           return;
@@ -985,8 +1017,8 @@ class Model {
     // In clause on picklist field
     let isInWithValues = query.substring(0, selStart).match(/\s+in\s*\(\s*(?:(?:'[^']*'\s*,\s*)+|'|)('?[^'\s]*)$/i);
     let inValuesUtilized = "";
-    if (isInWithValues){
-      if (isInWithValues[0] && isInWithValues[0].match(/\s*in\s*\(\s*(?:')$/i)){ // extra single quote
+    if (isInWithValues) {
+      if (isInWithValues[0] && isInWithValues[0].match(/\s*in\s*\(\s*(?:')$/i)) { // extra single quote
         selStart -= 1;
         isInWithValues[0] = isInWithValues[0].substring(0, isInWithValues[0].length - 1);
       }
@@ -1027,7 +1059,7 @@ class Model {
           .filter(field => field.relationshipName && field.relationshipName.toLowerCase() == referenceFieldName.toLowerCase())
           .flatMap(field => field.referenceTo)
         ) {
-          let {sobjectStatus, sobjectDescribe} = vm.describeInfo.describeSobject(useToolingApi, referencedSobjectName);
+          let { sobjectStatus, sobjectDescribe } = vm.describeInfo.describeSobject(useToolingApi, referencedSobjectName);
           if (sobjectDescribe) {
             newContextSobjectDescribes.add(sobjectDescribe);
           } else {
@@ -1051,7 +1083,7 @@ class Model {
         vm.autocompleteResults = {
           sobjectName,
           title: "Loading " + sobjectStatuses.get("loadfailed") + " metadata failed.",
-          results: [{value: "Retry", title: "Retry"}]
+          results: [{ value: "Retry", title: "Retry" }]
         };
         vm.autocompleteClick = vm.autocompleteReload.bind(vm);
         return;
@@ -1085,7 +1117,7 @@ class Model {
       let contextValueFields = contextSobjectDescribes
         .flatMap(sobjectDescribe => sobjectDescribe.fields
           .filter(field => field.name.toLowerCase() == fieldName.toLowerCase())
-          .map(field => ({sobjectDescribe, field}))
+          .map(field => ({ sobjectDescribe, field }))
         )
         .toArray();
       if (contextValueFields.length == 0) {
@@ -1110,14 +1142,14 @@ class Model {
         let contextValueField = contextValueFields[0];
         let queryMethod = useToolingApi ? "tooling/query" : vm.queryAll ? "queryAll" : "query";
         let whereClause = contextValueField.field.name + " like '%" + searchTerm.replace(/([\\'])/g, "\\$1") + "%'";
-        if (contextValueField.sobjectDescribe.name.toLowerCase() === "recordtype"){
+        if (contextValueField.sobjectDescribe.name.toLowerCase() === "recordtype") {
           let sobject = contextPath.split(".")[0];
           sobject = sobject.toLowerCase() === "recordtype" ? vm.autocompleteResults.sobjectName : sobject;
           whereClause += vm.autocompleteResults.sobjectName ? " AND SobjectType = '" + sobject + "'" : "";
         }
         let acQuery = "SELECT " + contextValueField.field.name + " FROM " + contextValueField.sobjectDescribe.name + " WHERE " + whereClause + " GROUP BY " + contextValueField.field.name + " LIMIT 100";
 
-        vm.spinFor(sfConn.rest("/services/data/v" + apiVersion + "/" + queryMethod + "/?q=" + encodeURIComponent(acQuery), {progressHandler: vm.autocompleteProgress})
+        vm.spinFor(sfConn.rest("/services/data/v" + apiVersion + "/" + queryMethod + "/?q=" + encodeURIComponent(acQuery), { progressHandler: vm.autocompleteProgress })
           .catch(err => {
             if (err.name != "AbortError") {
               vm.autocompleteResults = {
@@ -1139,7 +1171,7 @@ class Model {
               results: new Enumerable(data.records)
                 .map(record => record[contextValueField.field.name])
                 .filter(value => value)
-                .map(value => ({value: "'" + value + "'", title: value, suffix: " ", rank: 1, autocompleteType: "fieldValue"}))
+                .map(value => ({ value: "'" + value + "'", title: value, suffix: " ", rank: 1, autocompleteType: "fieldValue" }))
                 .toArray()
                 .sort(resultsSort)
             };
@@ -1151,21 +1183,21 @@ class Model {
         };
         return;
       }
-      let ar = new Enumerable(contextValueFields).flatMap(function* ({field}) {
+      let ar = new Enumerable(contextValueFields).flatMap(function* ({ field }) {
         yield* field.picklistValues.filter(
           pickVal => !inValuesUtilized.includes(pickVal.value.toLowerCase())
         ).map(
-          pickVal => ({value: "'" + pickVal.value + "'", title: pickVal.label, suffix: " ", rank: 1, autocompleteType: "picklistValue", dataType: ""})
+          pickVal => ({ value: "'" + pickVal.value + "'", title: pickVal.label, suffix: " ", rank: 1, autocompleteType: "picklistValue", dataType: "" })
         );
         if (field.type == "boolean") {
-          yield {value: "true", title: "true", suffix: " ", rank: 1};
-          yield {value: "false", title: "false", suffix: " ", rank: 1};
+          yield { value: "true", title: "true", suffix: " ", rank: 1 };
+          yield { value: "false", title: "false", suffix: " ", rank: 1 };
         }
         if (field.type == "date" || field.type == "datetime") {
           let pad = (n, d) => ("000" + n).slice(-d);
           let d = new Date();
           if (field.type == "date") {
-            yield {value: pad(d.getFullYear(), 4) + "-" + pad(d.getMonth() + 1, 2) + "-" + pad(d.getDate(), 2), title: "Today", suffix: " ", rank: 1};
+            yield { value: pad(d.getFullYear(), 4) + "-" + pad(d.getMonth() + 1, 2) + "-" + pad(d.getDate(), 2), title: "Today", suffix: " ", rank: 1 };
           }
           if (field.type == "datetime") {
             yield {
@@ -1179,53 +1211,53 @@ class Model {
             };
           }
           // from https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm Winter 24
-          yield {value: "YESTERDAY", title: "Starts 12:00:00 the day before and continues for 24 hours.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "TODAY", title: "Starts 12:00:00 of the current day and continues for 24 hours.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "TOMORROW", title: "Starts 12:00:00 after the current day and continues for 24 hours.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_WEEK", title: "Starts 12:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days. First day of the week is determined by your locale.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "THIS_WEEK", title: "Starts 12:00:00 on the most recent first day of the week before the current day and continues for seven full days. First day of the week is determined by your locale.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_WEEK", title: "Starts 12:00:00 on the most recent first day of the week after the current day and continues for seven full days. First day of the week is determined by your locale.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_MONTH", title: "Starts 12:00:00 on the first day of the month before the current day and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "THIS_MONTH", title: "Starts 12:00:00 on the first day of the month that the current day is in and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_MONTH", title: "Starts 12:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_90_DAYS", title: "Starts 12:00:00 of the current day and continues for the last 90 days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_90_DAYS", title: "Starts 12:00:00 of the current day and continues for the next 90 days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_N_DAYS:n", title: "For the number n provided, starts 12:00:00 of the current day and continues for the last n days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_N_DAYS:n", title: "For the number n provided, starts 12:00:00 of the current day and continues for the next n days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_N_WEEKS:n", title: "For the number n provided, starts 12:00:00 of the first day of the next week and continues for the next n weeks.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "N_DAYS_AGO:n", title: "Starts at 12:00:00 AM on the day n days before the current day and continues for 24 hours. (The range doesn't include today.)", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_N_WEEKS:n", title: "For the number n provided, starts 12:00:00 of the last day of the previous week and continues for the last n weeks.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "N_WEEKS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the month that started n months before the start of the current month and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_N_MONTHS:n", title: "For the number n provided, starts 12:00:00 of the first day of the next month and continues for the next n months.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_N_MONTHS:n", title: "For the number n provided, starts 12:00:00 of the last day of the previous month and continues for the last n months.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "N_MONTHS_AGO:n", title: "For the number n provided, starts 12:00:00 of the last day of the previous month and continues for the last n months.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "THIS_QUARTER", title: "Starts 12:00:00 of the current quarter and continues to the end of the current quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_QUARTER", title: "Starts 12:00:00 of the previous quarter and continues to the end of that quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_QUARTER", title: "Starts 12:00:00 of the next quarter and continues to the end of that quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_N_QUARTERS:n", title: "Starts 12:00:00 of the next quarter and continues to the end of the nth quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_N_QUARTERS:n", title: "Starts 12:00:00 of the previous quarter and continues to the end of the previous nth quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "N_QUARTERS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the calendar quarter n quarters before the current calendar quarter and continues to the end of that quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "THIS_YEAR", title: "Starts 12:00:00 on January 1 of the current year and continues through the end of December 31 of the current year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_YEAR", title: "Starts 12:00:00 on January 1 of the previous year and continues through the end of December 31 of that year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_YEAR", title: "Starts 12:00:00 on January 1 of the following year and continues through the end of December 31 of that year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_N_YEARS:n", title: "Starts 12:00:00 on January 1 of the following year and continues through the end of December 31 of the nth year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_N_YEARS:n", title: "Starts 12:00:00 on January 1 of the previous year and continues through the end of December 31 of the previous nth year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "N_YEARS_AGO:n", title: "Starts at 12:00:00 AM on January 1 of the calendar year n years before the current calendar year and continues through the end of December 31 of that year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "THIS_FISCAL_QUARTER", title: "Starts 12:00:00 on the first day of the current fiscal quarter and continues through the end of the last day of the fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_FISCAL_QUARTER", title: "Starts 12:00:00 on the first day of the last fiscal quarter and continues through the end of the last day of that fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_FISCAL_QUARTER", title: "Starts 12:00:00 on the first day of the next fiscal quarter and continues through the end of the last day of that fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_N_FISCAL_QUARTERS:n", title: "Starts 12:00:00 on the first day of the next fiscal quarter and continues through the end of the last day of the nth fiscal quarter. The fiscal year is defined in the company profile under Setup atCompany Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_N_FISCAL_QUARTERS:n", title: "Starts 12:00:00 on the first day of the last fiscal quarter and continues through the end of the last day of the previous nth fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "N_FISCAL_QUARTERS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the fiscal quarter n fiscal quarters before the current fiscal quarter and continues through the end of the last day of that fiscal quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "THIS_FISCAL_YEAR", title: "Starts 12:00:00 on the first day of the current fiscal year and continues through the end of the last day of the fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_FISCAL_YEAR", title: "Starts 12:00:00 on the first day of the last fiscal year and continues through the end of the last day of that fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_FISCAL_YEAR", title: "Starts 12:00:00 on the first day of the next fiscal year and continues through the end of the last day of that fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "NEXT_N_FISCAL_YEARS:n", title: "Starts 12:00:00 on the first day of the next fiscal year and continues through the end of the last day of the nth fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "LAST_N_FISCAL_YEARS:n", title: "Starts 12:00:00 on the first day of the last fiscal year and continues through the end of the last day of the previous nth fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
-          yield {value: "N_FISCAL_YEARS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the fiscal year n fiscal years ago and continues through the end of the last day of that fiscal year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: ""};
+          yield { value: "YESTERDAY", title: "Starts 12:00:00 the day before and continues for 24 hours.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "TODAY", title: "Starts 12:00:00 of the current day and continues for 24 hours.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "TOMORROW", title: "Starts 12:00:00 after the current day and continues for 24 hours.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_WEEK", title: "Starts 12:00:00 on the first day of the week before the most recent first day of the week and continues for seven full days. First day of the week is determined by your locale.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "THIS_WEEK", title: "Starts 12:00:00 on the most recent first day of the week before the current day and continues for seven full days. First day of the week is determined by your locale.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_WEEK", title: "Starts 12:00:00 on the most recent first day of the week after the current day and continues for seven full days. First day of the week is determined by your locale.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_MONTH", title: "Starts 12:00:00 on the first day of the month before the current day and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "THIS_MONTH", title: "Starts 12:00:00 on the first day of the month that the current day is in and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_MONTH", title: "Starts 12:00:00 on the first day of the month after the month that the current day is in and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_90_DAYS", title: "Starts 12:00:00 of the current day and continues for the last 90 days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_90_DAYS", title: "Starts 12:00:00 of the current day and continues for the next 90 days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_N_DAYS:n", title: "For the number n provided, starts 12:00:00 of the current day and continues for the last n days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_N_DAYS:n", title: "For the number n provided, starts 12:00:00 of the current day and continues for the next n days.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_N_WEEKS:n", title: "For the number n provided, starts 12:00:00 of the first day of the next week and continues for the next n weeks.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "N_DAYS_AGO:n", title: "Starts at 12:00:00 AM on the day n days before the current day and continues for 24 hours. (The range doesn't include today.)", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_N_WEEKS:n", title: "For the number n provided, starts 12:00:00 of the last day of the previous week and continues for the last n weeks.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "N_WEEKS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the month that started n months before the start of the current month and continues for all the days of that month.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_N_MONTHS:n", title: "For the number n provided, starts 12:00:00 of the first day of the next month and continues for the next n months.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_N_MONTHS:n", title: "For the number n provided, starts 12:00:00 of the last day of the previous month and continues for the last n months.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "N_MONTHS_AGO:n", title: "For the number n provided, starts 12:00:00 of the last day of the previous month and continues for the last n months.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "THIS_QUARTER", title: "Starts 12:00:00 of the current quarter and continues to the end of the current quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_QUARTER", title: "Starts 12:00:00 of the previous quarter and continues to the end of that quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_QUARTER", title: "Starts 12:00:00 of the next quarter and continues to the end of that quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_N_QUARTERS:n", title: "Starts 12:00:00 of the next quarter and continues to the end of the nth quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_N_QUARTERS:n", title: "Starts 12:00:00 of the previous quarter and continues to the end of the previous nth quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "N_QUARTERS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the calendar quarter n quarters before the current calendar quarter and continues to the end of that quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "THIS_YEAR", title: "Starts 12:00:00 on January 1 of the current year and continues through the end of December 31 of the current year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_YEAR", title: "Starts 12:00:00 on January 1 of the previous year and continues through the end of December 31 of that year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_YEAR", title: "Starts 12:00:00 on January 1 of the following year and continues through the end of December 31 of that year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_N_YEARS:n", title: "Starts 12:00:00 on January 1 of the following year and continues through the end of December 31 of the nth year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_N_YEARS:n", title: "Starts 12:00:00 on January 1 of the previous year and continues through the end of December 31 of the previous nth year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "N_YEARS_AGO:n", title: "Starts at 12:00:00 AM on January 1 of the calendar year n years before the current calendar year and continues through the end of December 31 of that year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "THIS_FISCAL_QUARTER", title: "Starts 12:00:00 on the first day of the current fiscal quarter and continues through the end of the last day of the fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_FISCAL_QUARTER", title: "Starts 12:00:00 on the first day of the last fiscal quarter and continues through the end of the last day of that fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_FISCAL_QUARTER", title: "Starts 12:00:00 on the first day of the next fiscal quarter and continues through the end of the last day of that fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_N_FISCAL_QUARTERS:n", title: "Starts 12:00:00 on the first day of the next fiscal quarter and continues through the end of the last day of the nth fiscal quarter. The fiscal year is defined in the company profile under Setup atCompany Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_N_FISCAL_QUARTERS:n", title: "Starts 12:00:00 on the first day of the last fiscal quarter and continues through the end of the last day of the previous nth fiscal quarter. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "N_FISCAL_QUARTERS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the fiscal quarter n fiscal quarters before the current fiscal quarter and continues through the end of the last day of that fiscal quarter.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "THIS_FISCAL_YEAR", title: "Starts 12:00:00 on the first day of the current fiscal year and continues through the end of the last day of the fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_FISCAL_YEAR", title: "Starts 12:00:00 on the first day of the last fiscal year and continues through the end of the last day of that fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_FISCAL_YEAR", title: "Starts 12:00:00 on the first day of the next fiscal year and continues through the end of the last day of that fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "NEXT_N_FISCAL_YEARS:n", title: "Starts 12:00:00 on the first day of the next fiscal year and continues through the end of the last day of the nth fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "LAST_N_FISCAL_YEARS:n", title: "Starts 12:00:00 on the first day of the last fiscal year and continues through the end of the last day of the previous nth fiscal year. The fiscal year is defined in the company profile under Setup at Company Profile | Fiscal Year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
+          yield { value: "N_FISCAL_YEARS_AGO:n", title: "Starts at 12:00:00 AM on the first day of the fiscal year n fiscal years ago and continues through the end of the last day of that fiscal year.", suffix: " ", rank: 1, autocompleteType: "variable", dataType: "" };
         }
         if (field.nillable) {
-          yield {value: "null", title: "null", suffix: " ", rank: 1, autocompleteType: "null", dataType: ""};
+          yield { value: "null", title: "null", suffix: " ", rank: 1, autocompleteType: "null", dataType: "" };
         }
       })
         .filter(res => res.value.toLowerCase().includes(searchTerm.toLowerCase()) || res.title.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -1272,9 +1304,9 @@ class Model {
           .flatMap(sobjectDescribe => sobjectDescribe.fields)
           .filter(field => field.name.toLowerCase().includes(searchTerm.toLowerCase()) || field.label.toLowerCase().includes(searchTerm.toLowerCase()))
           .flatMap(function* (field) {
-            yield {value: field.name, title: field.label, suffix: isAfterFrom ? " " : ", ", rank: 1, autocompleteType: "fieldName", dataType: field.type};
+            yield { value: field.name, title: field.label, suffix: isAfterFrom ? " " : ", ", rank: 1, autocompleteType: "fieldName", dataType: field.type };
             if (field.relationshipName) {
-              yield {value: field.relationshipName + ".", title: field.label, suffix: "", rank: 1, autocompleteType: "relationshipName", dataType: ""};
+              yield { value: field.relationshipName + ".", title: field.label, suffix: "", rank: 1, autocompleteType: "relationshipName", dataType: "" };
             }
           })
           .concat(
@@ -1282,9 +1314,9 @@ class Model {
               .filter(fn => fn.toLowerCase().startsWith(searchTerm.toLowerCase()))
               .map(fn => {
                 if (fn.includes(")")) { //Exception to easily support functions with hardcoded parameter options
-                  return {value: fn, title: fn, suffix: "", rank: 2, autocompleteType: "variable", dataType: ""};
+                  return { value: fn, title: fn, suffix: "", rank: 2, autocompleteType: "variable", dataType: "" };
                 } else {
-                  return {value: fn, title: fn + "()", suffix: "(", rank: 2, autocompleteType: "variable", dataType: ""};
+                  return { value: fn, title: fn + "()", suffix: "(", rank: 2, autocompleteType: "variable", dataType: "" };
                 }
               })
           )
@@ -1324,17 +1356,17 @@ class Model {
     vm.queryInput.value = query; // Update the input value with the cleaned query
     let splitQueries = null;
     let isSplitQueryExport = false;
-    
+
     function batchHandler(batch, batchNumber = 0, isFirstPage = true) {
       return batch.catch(err => {
         if (err.name == "AbortError") {
-          return {records: [], done: true, totalSize: -1, aborted: true};
+          return { records: [], done: true, totalSize: -1, aborted: true };
         }
         throw err;
       }).then(data => {
-        let fieldsResponses = {query: "records", queryAll: "records", "tooling/query": "records", search: "searchRecords", graphql: "data"};
+        let fieldsResponses = { query: "records", queryAll: "records", "tooling/query": "records", search: "searchRecords", graphql: "data" };
         let isSoql = fieldsResponses[exportedData.queryMethod] === "records";
-        if (exportedData.queryMethod === "graphql"){
+        if (exportedData.queryMethod === "graphql") {
           exportedData.sobject = Object.keys(data.data.uiapi.query)[0];
           let dataGraph = data.data.uiapi.query[exportedData.sobject].edges.map(record => {
             const firstProperty = Object.keys(record.node)[0];
@@ -1344,7 +1376,7 @@ class Model {
               for (const key in record.node) {
                 if (Object.prototype.hasOwnProperty.call(record.node, key)) {
                   transformed[key] = (typeof record.node[key] === "object" && "value" in record.node[key]) ? record.node[key].value : record.node[key];
-                  transformed.attributes = {type: exportedData.sobject};
+                  transformed.attributes = { type: exportedData.sobject };
                 }
               }
             }
@@ -1368,7 +1400,7 @@ class Model {
           total = exportedData.totalSize;
         }
         if (!data.done && isSoql) {
-          let pr = batchHandler(sfConn.rest(data.nextRecordsUrl, {progressHandler: vm.exportProgress}), batchNumber, false);
+          let pr = batchHandler(sfConn.rest(data.nextRecordsUrl, { progressHandler: vm.exportProgress }), batchNumber, false);
           vm.isWorking = true;
           vm.exportStatus = `Exporting... Completed ${recs} of ${total} record${s(total)}.`;
           vm.exportError = null;
@@ -1507,7 +1539,7 @@ class Model {
   // Wrapper for bulk REST calls. Disables cache-busting because Bulk API 2.0 
   // strictly rejects undefined query parameters.
   bulkRest(url, options = {}, rawResponse) {
-    return sfConn.rest(url, {...options, useCache: false}, rawResponse);
+    return sfConn.rest(url, { ...options, useCache: false }, rawResponse);
   }
 
   bulkDownloadBatchSize() {
@@ -1684,9 +1716,9 @@ class Model {
     }
     this.spinFor(this.bulkRest(this.bulkJobEndpoint(job), {
       method: "PATCH",
-      body: {state: BULK_STATE.ABORTED}
+      body: { state: BULK_STATE.ABORTED }
     }).then(() => {
-      this.bulkJob = this.bulkJobStore.set({...job, state: BULK_STATE.ABORTED, completedAt: new Date().toISOString()});
+      this.bulkJob = this.bulkJobStore.set({ ...job, state: BULK_STATE.ABORTED, completedAt: new Date().toISOString() });
       this.isBulkWorking = false;
       this.stopBulkPolling();
       this.exportStatus = "Bulk job aborted";
@@ -1709,7 +1741,7 @@ class Model {
         url += `&locator=${encodeURIComponent(locator)}`;
       }
       const xhr = await this.bulkRest(url, {
-        headers: {Accept: "text/csv"},
+        headers: { Accept: "text/csv" },
         responseType: "text"
       }, true);
       if (xhr.status === 404) {
@@ -1809,7 +1841,7 @@ class Model {
       promptTemplate.generate({
         Description: this.soqlPrompt.value
       }).then(result => {
-        if (result.result){
+        if (result.result) {
           // Extract SOQL from the result
           const soqlMatch = result.result.match(/<soql>(.*?)<\/soql>/);
           const extractedSoql = soqlMatch ? soqlMatch[1] : result.result;
@@ -1836,7 +1868,7 @@ class Model {
   stopExport() {
     this.exportProgress.abort();
   }
-  doQueryPlan(){
+  doQueryPlan() {
     let vm = this; // eslint-disable-line consistent-this
     let exportedData = new RecordTable(vm);
 
@@ -1857,8 +1889,8 @@ class Model {
     vm.autocompleteResults = {
       sobjectName: "",
       title: "Query Plan Tool:",
-      results: [{value: "Developer Console Query Plan Tool FAQ", title: "Developer Console Query Plan Tool FAQ", rank: 1, autocompleteType: "fieldName", dataType: "", link: "https://help.salesforce.com/s/articleView?id=000386864&type=1"},
-        {value: "Get Feedback on Query Performance", title: "Get Feedback on Query Performance", suffix: " ", rank: 1, autocompleteType: "fieldName", dataType: "", link: "https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/dome_query_explain.htm"},
+      results: [{ value: "Developer Console Query Plan Tool FAQ", title: "Developer Console Query Plan Tool FAQ", rank: 1, autocompleteType: "fieldName", dataType: "", link: "https://help.salesforce.com/s/articleView?id=000386864&type=1" },
+      { value: "Get Feedback on Query Performance", title: "Get Feedback on Query Performance", suffix: " ", rank: 1, autocompleteType: "fieldName", dataType: "", link: "https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/dome_query_explain.htm" },
       ]
     };
   }
@@ -1876,14 +1908,14 @@ class Model {
       }
       if (queryFromUrl) {
         const newTabName = `${Model.QUERY_TAB_PREFIX} ${this.queryTabs.length + 1}`;
-        this.queryTabs.push({name: newTabName, query: this.initialQuery, queryApiMode: this.queryApiMode, queryAll: this.queryAll, results: null, isManuallyRenamed: false});
+        this.queryTabs.push({ name: newTabName, query: this.initialQuery, queryApiMode: this.queryApiMode, queryAll: this.queryAll, results: null, isManuallyRenamed: false });
         this.activeTabIndex = this.queryTabs.length - 1;
         this.saveQueryTabs();
       } else {
         this.activeTabIndex = 0;
       }
     } else {
-      this.queryTabs = [{name: `${Model.QUERY_TAB_PREFIX} 1`, query: this.initialQuery, queryApiMode: this.queryApiMode, queryAll: this.queryAll, results: null, isManuallyRenamed: false}];
+      this.queryTabs = [{ name: `${Model.QUERY_TAB_PREFIX} 1`, query: this.initialQuery, queryApiMode: this.queryApiMode, queryAll: this.queryAll, results: null, isManuallyRenamed: false }];
       this.activeTabIndex = 0;
     }
   }
@@ -1902,7 +1934,7 @@ class Model {
 
   addQueryTab() {
     const newTabName = `${Model.QUERY_TAB_PREFIX} ${this.getNextQueryTabIndex()}`;
-    this.queryTabs.push({name: newTabName, query: "", queryApiMode: API_MODE.STANDARD, queryAll: false, results: null, isManuallyRenamed: false});
+    this.queryTabs.push({ name: newTabName, query: "", queryApiMode: API_MODE.STANDARD, queryAll: false, results: null, isManuallyRenamed: false });
     this.activeTabIndex = this.queryTabs.length - 1;
     this.setActiveTab(this.activeTabIndex);
     this.saveQueryTabs();
@@ -2005,8 +2037,8 @@ class Model {
 
   updateCurrentTabName(name) {
     if (this.queryTabs[this.activeTabIndex]
-        && !this.queryTabs[this.activeTabIndex].name.includes(name)
-        && !this.queryTabs[this.activeTabIndex].isManuallyRenamed) {
+      && !this.queryTabs[this.activeTabIndex].name.includes(name)
+      && !this.queryTabs[this.activeTabIndex].isManuallyRenamed) {
       // Check if there are any other tabs with the same name
       let count = 1;
       let newName = name;
@@ -2292,7 +2324,7 @@ function RecordTable(vm) {
       }
       return "" + cell;
     }
-    return cell; 
+    return cell;
   }
 
   let isVisible = (row, filter) => {
@@ -2322,7 +2354,7 @@ function RecordTable(vm) {
       }
       // Skip hidden columns even if previously selected
       if (rt.colVisibilities && !rt.colVisibilities[columnIndex]) {
-          return false;
+        return false;
       }
 
       const cellValue = String(row[columnIndex]);
@@ -2456,7 +2488,7 @@ class App extends React.Component {
     this.onFilterShortcutKeyDown = this.onFilterShortcutKeyDown.bind(this);
     this.onSetQueryName = this.onSetQueryName.bind(this);
     this.onStopExport = this.onStopExport.bind(this);
-    this.state = {hideButtonsOption: JSON.parse(localStorage.getItem("hideExportButtonsOption")), isDropdownOpen: false};// Tracks whether the dropdown is open
+    this.state = { hideButtonsOption: JSON.parse(localStorage.getItem("hideExportButtonsOption")), isDropdownOpen: false };// Tracks whether the dropdown is open
     this.filterColumns = []; // Initialize as an empty array
     this.onAddTab = this.onAddTab.bind(this);
     this.onRemoveTab = this.onRemoveTab.bind(this);
@@ -2492,61 +2524,61 @@ class App extends React.Component {
     };
   }
   onQueryAllChange(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.queryAll = e.target.checked;
     model.updateCurrentTabProperty("queryAll", model.queryAll);
     model.didUpdate();
   }
   onQueryApiModeChange(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.setQueryApiMode(e.target.value);
     model.queryAutocompleteHandler();
-    this.setState({bulkPanelOpen: null});
+    this.setState({ bulkPanelOpen: null });
     model.didUpdate();
   }
   onAbortBulkJob() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.abortBulkJob();
     model.didUpdate();
   }
   onDownloadBulkResults(e, jobId) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.downloadBulkResults(jobId);
     model.didUpdate();
   }
   onDismissBulkJob() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.dismissBulkJob();
     model.didUpdate();
   }
   onRefreshBulkStatus() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.refreshBulkStatus();
     model.didUpdate();
   }
   onToggleBulkHistory() {
-    this.setState({showBulkHistory: !this.state.showBulkHistory});
+    this.setState({ showBulkHistory: !this.state.showBulkHistory });
   }
   onToggleBulkPanel() {
-    let {model} = this.props;
+    let { model } = this.props;
     const open = this.state.bulkPanelOpen === null ? model.isBulk() : this.state.bulkPanelOpen;
-    this.setState({bulkPanelOpen: !open});
+    this.setState({ bulkPanelOpen: !open });
   }
   onPrefHideRelationsChange() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.prefHideRelations = !model.prefHideRelations;
     model.updatedExportedData();
     model.didUpdate();
   }
   onSelectHistoryEntry(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.selectedHistoryEntry = JSON.parse(e.target.value);
     model.selectHistoryEntry();
     model.didUpdate();
   }
   onSelectQueryTemplate(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.selectedQueryTemplate = e.target.value;
     model.selectQueryTemplate();
     model.didUpdate();
@@ -2555,27 +2587,27 @@ class App extends React.Component {
     e.preventDefault();
     let r = confirm("Are you sure you want to clear the query history?");
     if (r == true) {
-      let {model} = this.props;
+      let { model } = this.props;
       model.clearHistory();
       model.didUpdate();
     }
   }
   onSelectSavedEntry(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.selectedSavedEntry = JSON.parse(e.target.value);
     model.selectSavedEntry();
     model.didUpdate();
   }
   onAddToHistory(e) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.addToHistory();
     model.didUpdate();
   }
   onRemoveFromHistory(e) {
     e.preventDefault();
     let r = confirm("Are you sure you want to remove this saved query?");
-    let {model} = this.props;
+    let { model } = this.props;
     if (r == true) {
       model.removeFromHistory();
     }
@@ -2585,7 +2617,7 @@ class App extends React.Component {
   onClearSavedHistory(e) {
     e.preventDefault();
     let r = confirm("Are you sure you want to remove all saved queries?");
-    let {model} = this.props;
+    let { model } = this.props;
     if (r == true) {
       model.clearSavedHistory();
     }
@@ -2594,40 +2626,40 @@ class App extends React.Component {
   }
   onToggleHelp(e) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.toggleHelp();
     model.didUpdate();
   }
   onToggleAI(e) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.toggleAI();
     model.didUpdate();
   }
   onToggleExpand(e) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.toggleExpand();
     model.didUpdate();
   }
   onToggleSavedOptions(e) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.toggleSavedOptions();
     model.didUpdate();
   }
   onExport() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.doExport();
     model.didUpdate();
   }
   onGenerateSoql() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.generateSoql();
     model.didUpdate();
   }
   onCopyQuery() {
-    let {model} = this.props;
+    let { model } = this.props;
     let url = new URL(window.location.href);
     let searchParams = url.searchParams;
     searchParams.set("query", model.queryInput.value);
@@ -2635,51 +2667,51 @@ class App extends React.Component {
     navigator.clipboard.writeText(url.toString());
     model.didUpdate();
   }
-  onQueryPlan(){
-    let {model} = this.props;
+  onQueryPlan() {
+    let { model } = this.props;
     model.doQueryPlan();
     model.didUpdate();
   }
   onCopyAsExcel() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.copyAsExcel();
     model.didUpdate();
   }
   onCopyAsCsv() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.copyAsCsv();
     model.didUpdate();
   }
-  onDownloadAsCsv(){
-    let {model} = this.props;
+  onDownloadAsCsv() {
+    let { model } = this.props;
     model.downloadAsCsv();
     model.didUpdate();
   }
-  onDownloadAsXlsx(){
-    let {model} = this.props;
+  onDownloadAsXlsx() {
+    let { model } = this.props;
     model.downloadAsXlsx();
     model.didUpdate();
   }
   onCopyAsJson() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.copyAsJson();
     model.didUpdate();
   }
   onCopyAsMarkdown() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.copyAsMarkdown();
     model.didUpdate();
   }
   onDeleteRecords(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.deleteRecords(e);
     model.didUpdate();
   }
   onResultsFilterInput(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.setResultsFilter(e.target.value);
-    if (e.target.value.length == 0){
-      this.setState({isDropdownOpen: false});
+    if (e.target.value.length == 0) {
+      this.setState({ isDropdownOpen: false });
     }
     model.didUpdate();
   }
@@ -2708,29 +2740,29 @@ class App extends React.Component {
     }
   }
   onSetQueryName(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     model.setQueryName(e.target.value);
     model.didUpdate();
   }
   onStopExport() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.stopExport();
     model.didUpdate();
   }
   onAddTab(e) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.addQueryTab();
   }
   onRemoveTab(e, index) {
     e.preventDefault();
     e.stopPropagation();
-    let {model} = this.props;
+    let { model } = this.props;
     model.removeQueryTab(index);
   }
 
   onRemoveOtherTabs() {
-    let {model} = this.props;
+    let { model } = this.props;
     if (this.state.contextMenu) {
       model.removeOtherQueryTabs(this.state.contextMenu.index);
     }
@@ -2738,7 +2770,7 @@ class App extends React.Component {
   }
 
   onRemoveRightTabs() {
-    let {model} = this.props;
+    let { model } = this.props;
     if (this.state.contextMenu) {
       model.removeRightQueryTabs(this.state.contextMenu.index);
     }
@@ -2746,19 +2778,19 @@ class App extends React.Component {
   }
 
   onRemoveAllTabs() {
-    let {model} = this.props;
+    let { model } = this.props;
     model.removeAllQueryTabs();
     this.onCloseContextMenu();
   }
 
   onTabClick(e, index) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     model.setActiveTab(index);
   }
 
   onQueryInput(e) {
-    let {model} = this.props;
+    let { model } = this.props;
     let query = e.target.value;
     model.updateCurrentTabQuery(query);
     if (this.autocompleteTimeout) clearTimeout(this.autocompleteTimeout);
@@ -2798,13 +2830,14 @@ class App extends React.Component {
     queryInput.classList.remove("query-plain");
     // Skip re-highlighting when the query text itself hasn't changed, since componentDidUpdate fires on every unrelated state change too.
     this.highlightGuard(code, () => {
-      queryHighlightCode.innerHTML = window.Prism.highlight(code, window.Prism.languages.sql, "sql");
+      const language = queryLanguage(code);
+      queryHighlightCode.innerHTML = window.Prism.highlight(code, window.Prism.languages[language], language);
     });
   }
 
   onTabNameEdit(e, index) {
     e.stopPropagation();
-    let {model} = this.props;
+    let { model } = this.props;
     this.setState({
       editingTabIndex: index,
       editingTabName: model.queryTabs[index].name
@@ -2814,7 +2847,7 @@ class App extends React.Component {
   onTabNameSubmit(e, index) {
     e.preventDefault();
     e.stopPropagation();
-    let {model} = this.props;
+    let { model } = this.props;
     if (this.state.editingTabName.trim()) {
       model.updateTabName(index, this.state.editingTabName);
     }
@@ -2827,7 +2860,7 @@ class App extends React.Component {
   onTabDragStart(e, index) {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/html", e.target);
-    this.setState({draggedTabIndex: index, dropTargetIndex: -1});
+    this.setState({ draggedTabIndex: index, dropTargetIndex: -1 });
   }
 
   onTabDragOver(e, index) {
@@ -2835,30 +2868,30 @@ class App extends React.Component {
     e.dataTransfer.dropEffect = "move";
     // Update drop target index if different from current
     if (this.state.dropTargetIndex !== index && this.state.draggedTabIndex !== index) {
-      this.setState({dropTargetIndex: index});
+      this.setState({ dropTargetIndex: index });
     }
   }
 
   onTabDragLeave(e) {
     // Only clear if we're leaving the tabs container entirely
     if (!e.currentTarget.contains(e.relatedTarget)) {
-      this.setState({dropTargetIndex: -1});
+      this.setState({ dropTargetIndex: -1 });
     }
   }
 
   onTabDrop(e, index) {
     e.preventDefault();
-    let {model} = this.props;
+    let { model } = this.props;
     const fromIndex = this.state.draggedTabIndex;
     if (fromIndex !== -1 && fromIndex !== index) {
       model.reorderTabs(fromIndex, index);
     }
-    this.setState({draggedTabIndex: -1, dropTargetIndex: -1});
+    this.setState({ draggedTabIndex: -1, dropTargetIndex: -1 });
   }
 
   onTabDragEnd() {
     // Reset drag state when drag operation ends
-    this.setState({draggedTabIndex: -1, dropTargetIndex: -1});
+    this.setState({ draggedTabIndex: -1, dropTargetIndex: -1 });
   }
 
   onTabContextMenu(e, index) {
@@ -2895,11 +2928,11 @@ class App extends React.Component {
   }
 
   onCloseContextMenu() {
-    this.setState({contextMenu: null});
+    this.setState({ contextMenu: null });
   }
 
   componentDidMount() {
-    let {model} = this.props;
+    let { model } = this.props;
     let queryInput = this.refs.query;
     model.setQueryInput(queryInput);
     model.soqlPrompt = this.refs.prompt;
@@ -2918,7 +2951,7 @@ class App extends React.Component {
     }
 
     //Set the cursor focus on query text area
-    if (localStorage.getItem("disableQueryInputAutoFocus") !== "true"){
+    if (localStorage.getItem("disableQueryInputAutoFocus") !== "true") {
       queryInput.focus();
     }
     this.updateQueryHighlight();
@@ -2960,7 +2993,7 @@ class App extends React.Component {
         e.preventDefault();
         // Always execute instantly on explicit user request (Ctrl+Space)
         if (this.autocompleteTimeout) clearTimeout(this.autocompleteTimeout);
-        model.queryAutocompleteHandler({ctrlSpace: true});
+        model.queryAutocompleteHandler({ ctrlSpace: true });
         model.didUpdate();
       } else if ((e.ctrlKey || e.metaKey) && e.key === "'") {
         e.preventDefault();
@@ -3017,7 +3050,7 @@ class App extends React.Component {
       if (DISCRETE_DATE_LITERAL_RE.test(item)) return item.toUpperCase();
       if (NUMERIC_LITERAL_RE.test(item)) return item.replaceAll(",", "");
       if (DATE_LITERAL_RE.test(item)) return item;
-      return toSoqlStringLiteral(item); 
+      return toSoqlStringLiteral(item);
     }
 
     // Finds the sobject for the SELECT...FROM scope containing cursorPos. A "(" only opens a
@@ -3030,14 +3063,14 @@ class App extends React.Component {
       const tokenRegex = /\(|\)|\bFROM\s+(?!WHERE\b)([A-Za-z_]\w*)/gi;
       let m;
       while ((m = tokenRegex.exec(text)) !== null) {
-        tokens.push({index: m.index, text: m[0], sobject: m[1] || null});
+        tokens.push({ index: m.index, text: m[0], sobject: m[1] || null });
       }
-      const stack = [{sobject: null}];
+      const stack = [{ sobject: null }];
       for (const tok of tokens) {
         if (tok.text === "(") {
           const isSubquery = /^\s*SELECT\b/i.test(text.slice(tok.index + 1));
           const top = stack[stack.length - 1];
-          stack.push(isSubquery ? {sobject: null} : {sobject: top.sobject, inherited: true});
+          stack.push(isSubquery ? { sobject: null } : { sobject: top.sobject, inherited: true });
         } else if (tok.text === ")") {
           if (stack.length > 1) stack.pop();
         } else {
@@ -3055,7 +3088,7 @@ class App extends React.Component {
       if (queryInput.value.substring(end, end + 1).match(/['"]/)) end++;
       const textAfterCursor = queryInput.value.substring(end);
       const hasClosingParen = /^[^(]*\)/.test(textAfterCursor);
-      return {start, end, hasClosingParen};
+      return { start, end, hasClosingParen };
     }
 
     function insertFormattedList(formattedList, start, end, hasClosingParen) {
@@ -3095,7 +3128,7 @@ class App extends React.Component {
       if (rawItems.length === 0) return;
 
       e.preventDefault();
-      const {start, end, hasClosingParen} = capturePasteTarget();
+      const { start, end, hasClosingParen } = capturePasteTarget();
       const originalValue = queryInput.value;
 
       // Instantly format Multi-Select Picklists
@@ -3159,9 +3192,9 @@ class App extends React.Component {
 
     addEventListener("message", e => {
       if (e.data.command === "open-export-autocomplete") {
-        model.queryAutocompleteHandler({ctrlSpace: true});
+        model.queryAutocompleteHandler({ ctrlSpace: true });
         model.didUpdate();
-      } else if (e.data.command === "open-export-execute"){
+      } else if (e.data.command === "open-export-execute") {
         model.doExport();
         model.didUpdate();
       }
@@ -3189,7 +3222,7 @@ class App extends React.Component {
     if (!window.webkitURL) {
       // Firefox
       // Firefox does not fire a resize event. The next best thing is to listen to when the browser changes the style.height attribute.
-      new MutationObserver(recalculateHeight).observe(queryInput, {attributes: true});
+      new MutationObserver(recalculateHeight).observe(queryInput, { attributes: true });
     } else {
       // Chrome
       // Chrome does not fire a resize event and does not allow us to get notified when the browser changes the style.height attribute.
@@ -3206,7 +3239,7 @@ class App extends React.Component {
     resize();
   }
   componentWillUnmount() {
-    let {model} = this.props;
+    let { model } = this.props;
     if (this.removeBulkStorageListener) {
       this.removeBulkStorageListener();
     }
@@ -3221,7 +3254,7 @@ class App extends React.Component {
     // Investigate if we can use the IntersectionObserver API here instead, once it is available.
     this.scrollTable.viewportChange();
   }
-  toggleQueryMoreMenu(){
+  toggleQueryMoreMenu() {
     this.refs.buttonQueryMenu.classList.toggle("slds-is-open");
   }
 
@@ -3250,18 +3283,18 @@ class App extends React.Component {
         : "Stop tracking this job here. It keeps running in Salesforce"
     }, "Dismiss");
 
-    const titleBar = h("div", {className: "slds-grid slds-grid_vertical-align-center"},
-      h("span", {className: "slds-text-title slds-m-right_x-small"}, "Bulk API 2.0 export"),
-      h("span", {className: `slds-badge slds-theme_${theme}`}, job.state),
-      job.object ? h("span", {className: "slds-text-body_small slds-text-color_weak slds-m-left_x-small"}, job.object) : null
+    const titleBar = h("div", { className: "slds-grid slds-grid_vertical-align-center" },
+      h("span", { className: "slds-text-title slds-m-right_x-small" }, "Bulk API 2.0 export"),
+      h("span", { className: `slds-badge slds-theme_${theme}` }, job.state),
+      job.object ? h("span", { className: "slds-text-body_small slds-text-color_weak slds-m-left_x-small" }, job.object) : null
     );
 
     if (!open) {
-      return h("div", {className: "slds-box slds-box_x-small slds-m-horizontal_medium slds-m-top_small slds-m-bottom_medium slds-theme_default"},
-        h("div", {className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center"},
+      return h("div", { className: "slds-box slds-box_x-small slds-m-horizontal_medium slds-m-top_small slds-m-bottom_medium slds-theme_default" },
+        h("div", { className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center" },
           titleBar,
-          h("div", {className: "slds-button-group"},
-            h("button", {key: "toggle", type: "button", className: "slds-button slds-button_neutral", onClick: this.onToggleBulkPanel, title: "Show the full job status"}, "Show details"),
+          h("div", { className: "slds-button-group" },
+            h("button", { key: "toggle", type: "button", className: "slds-button slds-button_neutral", onClick: this.onToggleBulkPanel, title: "Show the full job status" }, "Show details"),
             dismissButton
           )
         )
@@ -3270,15 +3303,15 @@ class App extends React.Component {
 
     const historyMax = model.bulkJobHistoryMax() - 1;
     const history = model.bulkJobStore.history.list.filter(e => e.jobId !== job.jobId).slice(0, historyMax);
-    const field = (label, value) => h("div", {key: label, className: "slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-right_small slds-p-bottom_xx-small"},
-      h("dt", {className: "slds-text-title slds-truncate"}, label),
-      h("dd", {className: "slds-text-body_small slds-truncate", title: String(value)}, value)
+    const field = (label, value) => h("div", { key: label, className: "slds-col slds-size_1-of-2 slds-large-size_1-of-4 slds-p-right_small slds-p-bottom_xx-small" },
+      h("dt", { className: "slds-text-title slds-truncate" }, label),
+      h("dd", { className: "slds-text-body_small slds-truncate", title: String(value) }, value)
     );
 
-    return h("div", {className: "slds-box slds-box_x-small slds-m-horizontal_medium slds-m-top_small slds-m-bottom_small slds-theme_default"},
-      h("div", {className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_x-small"},
+    return h("div", { className: "slds-box slds-box_x-small slds-m-horizontal_medium slds-m-top_small slds-m-bottom_small slds-theme_default" },
+      h("div", { className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_x-small" },
         titleBar,
-        h("div", {className: "slds-button-group"},
+        h("div", { className: "slds-button-group" },
           h("button", {
             key: "download",
             type: "button",
@@ -3313,37 +3346,37 @@ class App extends React.Component {
           dismissButton
         )
       ),
-      h("dl", {className: "slds-grid slds-wrap"},
+      h("dl", { className: "slds-grid slds-wrap" },
         field("Job ID", job.jobId),
         field("Submitted", new Date(job.submittedAt).toLocaleString()),
         field("Elapsed", model.bulkElapsed()),
         field("Records", job.recordCount != null ? job.recordCount.toLocaleString() : "-")
       ),
-      job.query ? h("p", {className: "slds-text-body_small slds-text-color_weak slds-truncate slds-m-top_xx-small", title: job.query}, job.query) : null,
-      job.errorMessage ? h("div", {className: "slds-text-color_error slds-text-body_small slds-m-top_x-small"}, job.errorMessage) : null,
-      model.bulkMessage ? h("div", {className: "slds-text-color_weak slds-text-body_small slds-m-top_x-small"}, model.bulkMessage) : null,
-      model.bulkPreview ? h("div", {className: "slds-m-top_small"},
-        h("p", {className: "slds-text-title slds-m-bottom_xx-small"}, `Preview - first ${model.bulkPreview.rows.length} row${s(model.bulkPreview.rows.length)} of the downloaded file`),
-        h("div", {style: {overflowX: "auto"}},
-          h("table", {className: "slds-table slds-table_bordered slds-table_fixed-layout slds-table_col-bordered bulk-preview-table"},
+      job.query ? h("p", { className: "slds-text-body_small slds-text-color_weak slds-truncate slds-m-top_xx-small", title: job.query }, job.query) : null,
+      job.errorMessage ? h("div", { className: "slds-text-color_error slds-text-body_small slds-m-top_x-small" }, job.errorMessage) : null,
+      model.bulkMessage ? h("div", { className: "slds-text-color_weak slds-text-body_small slds-m-top_x-small" }, model.bulkMessage) : null,
+      model.bulkPreview ? h("div", { className: "slds-m-top_small" },
+        h("p", { className: "slds-text-title slds-m-bottom_xx-small" }, `Preview - first ${model.bulkPreview.rows.length} row${s(model.bulkPreview.rows.length)} of the downloaded file`),
+        h("div", { style: { overflowX: "auto" } },
+          h("table", { className: "slds-table slds-table_bordered slds-table_fixed-layout slds-table_col-bordered bulk-preview-table" },
             h("thead", {},
-              h("tr", {className: "slds-line-height_reset"},
-                model.bulkPreview.header.map((col, i) => h("th", {key: i, scope: "col"},
-                  h("div", {className: "slds-truncate"}, col)
+              h("tr", { className: "slds-line-height_reset" },
+                model.bulkPreview.header.map((col, i) => h("th", { key: i, scope: "col" },
+                  h("div", { className: "slds-truncate" }, col)
                 ))
               )
             ),
             h("tbody", {},
-              model.bulkPreview.rows.map((row, i) => h("tr", {key: i, className: "slds-hint-parent"},
-                row.map((cell, j) => h("td", {key: j},
-                  h("div", {className: "slds-truncate"}, cell)
+              model.bulkPreview.rows.map((row, i) => h("tr", { key: i, className: "slds-hint-parent" },
+                row.map((cell, j) => h("td", { key: j },
+                  h("div", { className: "slds-truncate" }, cell)
                 ))
               ))
             )
           )
         )
       ) : null,
-      h("div", {className: "slds-m-top_x-small"},
+      h("div", { className: "slds-m-top_x-small" },
         h("button", {
           type: "button",
           className: "slds-button slds-button_neutral slds-button_stretch-none",
@@ -3351,20 +3384,20 @@ class App extends React.Component {
         }, this.state.showBulkHistory ? "Hide past bulk jobs" : `Show past bulk jobs (${history.length})`)
       ),
       !this.state.showBulkHistory ? null : history.length === 0
-        ? h("p", {className: "slds-text-body_small slds-text-color_weak slds-m-top_xx-small"}, "No other bulk jobs from the last 7 days.")
-        : h("ul", {className: "slds-has-dividers_bottom-space slds-m-top_xx-small"},
-          history.map(entry => h("li", {key: entry.jobId, className: "slds-item slds-text-body_small"},
-            h("div", {className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center"},
-              h("div", {className: "slds-truncate", title: entry.query},
-                h("span", {className: "slds-text-title"}, entry.jobId),
+        ? h("p", { className: "slds-text-body_small slds-text-color_weak slds-m-top_xx-small" }, "No other bulk jobs from the last 7 days.")
+        : h("ul", { className: "slds-has-dividers_bottom-space slds-m-top_xx-small" },
+          history.map(entry => h("li", { key: entry.jobId, className: "slds-item slds-text-body_small" },
+            h("div", { className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center" },
+              h("div", { className: "slds-truncate", title: entry.query },
+                h("span", { className: "slds-text-title" }, entry.jobId),
                 " \u00b7 ",
                 h("span", {}, new Date(entry.submittedAt).toLocaleString()),
                 " \u00b7 ",
                 h("span", {}, entry.state),
-                entry.query ? h("div", {className: "slds-truncate slds-text-color_weak"}, entry.query) : null
+                entry.query ? h("div", { className: "slds-truncate slds-text-color_weak" }, entry.query) : null
               ),
               entry.state === BULK_STATE.JOB_COMPLETE
-                ? h("a", {href: "#", onClick: e => this.onDownloadBulkResults(e, entry.jobId)}, "Download")
+                ? h("a", { href: "#", onClick: e => this.onDownloadBulkResults(e, entry.jobId) }, "Download")
                 : null
             )
           ))
@@ -3373,7 +3406,7 @@ class App extends React.Component {
   }
 
   render() {
-    let {model} = this.props;
+    let { model } = this.props;
     const perf = model.perfStatus();
 
     const isMac = navigator.userAgentData?.platform === "macOS" || /Mac/.test(navigator.platform);
@@ -3388,30 +3421,30 @@ class App extends React.Component {
         key: "agentforce-btn",
         className: "slds-builder-header__utilities-item slds-p-top_x-small slds-p-horizontal_x-small sfir-border-none"
       },
-      h("button", {
-        className: "slds-button slds-button_icon slds-button_icon-border-filled",
-        title: "Agentforce",
-        onClick: this.onToggleAI
-      },
-      h("svg", {className: "slds-button__icon", "aria-hidden": "true"},
-        h("use", {xlinkHref: "symbols.svg#einstein"})
-      )
-      )
+        h("button", {
+          className: "slds-button slds-button_icon slds-button_icon-border-filled",
+          title: "Agentforce",
+          onClick: this.onToggleAI
+        },
+          h("svg", { className: "slds-button__icon", "aria-hidden": "true" },
+            h("use", { xlinkHref: "symbols.svg#einstein" })
+          )
+        )
       ),
       // Help button
       h("div", {
         key: "help-btn",
         className: "slds-builder-header__utilities-item slds-p-top_x-small slds-p-horizontal_x-small sfir-border-none"
       },
-      h("button", {
-        className: "slds-button slds-button_icon slds-button_icon-border-filled",
-        title: "Export Help",
-        onClick: this.onToggleHelp
-      },
-      h("svg", {className: "slds-button__icon", "aria-hidden": "true"},
-        h("use", {xlinkHref: "symbols.svg#help"})
-      )
-      )
+        h("button", {
+          className: "slds-button slds-button_icon slds-button_icon-border-filled",
+          title: "Export Help",
+          onClick: this.onToggleHelp
+        },
+          h("svg", { className: "slds-button__icon", "aria-hidden": "true" },
+            h("use", { xlinkHref: "symbols.svg#help" })
+          )
+        )
       )
     ].filter(Boolean); // Remove null items
 
@@ -3426,49 +3459,49 @@ class App extends React.Component {
         utilityItems
       }),
 
-      h("div", {className: "slds-m-top_xx-large sfir-page-container"},
-        h("div", {className: "slds-card slds-m-around_medium"},
-          h("div", {className: "slds-card__body slds-card__body_inner"},
+      h("div", { className: "slds-m-top_xx-large sfir-page-container" },
+        h("div", { className: "slds-card slds-m-around_medium" },
+          h("div", { className: "slds-card__body slds-card__body_inner" },
             h("div", {},
             ),
-            h("div", {className: "query-controls"},
-              h("h3", {className: "slds-text-heading_small slds-m-bottom_xx-small slds-m-left_xxx-small"}, "Export Query"),
-              h("div", {className: "query-history-controls"},
-                h("select", {value: "", onChange: this.onSelectQueryTemplate, className: "query-history", title: "Check documentation to customize templates"},
-                  h("option", {value: null, disabled: true, defaultValue: true, hidden: true}, "Templates"),
-                  model.queryTemplates.map(q => h("option", {key: q, value: q}, q))
+            h("div", { className: "query-controls" },
+              h("h3", { className: "slds-text-heading_small slds-m-bottom_xx-small slds-m-left_xxx-small" }, "Export Query"),
+              h("div", { className: "query-history-controls" },
+                h("select", { value: "", onChange: this.onSelectQueryTemplate, className: "query-history", title: "Check documentation to customize templates" },
+                  h("option", { value: null, disabled: true, defaultValue: true, hidden: true }, "Templates"),
+                  model.queryTemplates.map(q => h("option", { key: q, value: q }, q))
                 ),
-                h("div", {className: "slds-button-group"},
-                  h("select", {value: JSON.stringify(model.selectedHistoryEntry), onChange: this.onSelectHistoryEntry, className: "query-history"},
-                    h("option", {value: JSON.stringify(null), disabled: true}, "Query History"),
-                    model.queryHistory.list.map(q => h("option", {key: JSON.stringify(q), value: JSON.stringify(q)}, q.query.substring(0, 300)))
+                h("div", { className: "slds-button-group" },
+                  h("select", { value: JSON.stringify(model.selectedHistoryEntry), onChange: this.onSelectHistoryEntry, className: "query-history" },
+                    h("option", { value: JSON.stringify(null), disabled: true }, "Query History"),
+                    model.queryHistory.list.map(q => h("option", { key: JSON.stringify(q), value: JSON.stringify(q) }, q.query.substring(0, 300)))
                   ),
-                  h("button", {className: "slds-button slds-button_neutral", onClick: this.onClearHistory, title: "Clear Query History"}, "Clear")
+                  h("button", { className: "slds-button slds-button_neutral", onClick: this.onClearHistory, title: "Clear Query History" }, "Clear")
                 ),
-                h("div", {className: "slds-button-group slds-m-left_small"},
-                  h("select", {value: JSON.stringify(model.selectedSavedEntry), onChange: this.onSelectSavedEntry, className: "query-history"},
-                    h("option", {value: JSON.stringify(null), disabled: true}, "Saved Queries"),
-                    model.savedHistory.list.map(q => h("option", {key: JSON.stringify(q), value: JSON.stringify(q)}, q.query.substring(0, 300)))
+                h("div", { className: "slds-button-group slds-m-left_small" },
+                  h("select", { value: JSON.stringify(model.selectedSavedEntry), onChange: this.onSelectSavedEntry, className: "query-history" },
+                    h("option", { value: JSON.stringify(null), disabled: true }, "Saved Queries"),
+                    model.savedHistory.list.map(q => h("option", { key: JSON.stringify(q), value: JSON.stringify(q) }, q.query.substring(0, 300)))
                   ),
-                  h("input", {placeholder: "Query Label", type: "save", value: model.queryName, onInput: this.onSetQueryName}),
-                  h("button", {className: "slds-button slds-button_neutral", onClick: this.onAddToHistory, title: "Add query to saved history"}, "Save Query"),
-                  h("button", {className: model.expandSavedOptions ? "slds-button slds-button_neutral toggle contract" : "slds-button slds-button_neutral toggle expand", title: "Show More Options", onClick: this.onToggleSavedOptions}, h("div", {className: "button-toggle-icon"}))
+                  h("input", { placeholder: "Query Label", type: "save", value: model.queryName, onInput: this.onSetQueryName }),
+                  h("button", { className: "slds-button slds-button_neutral", onClick: this.onAddToHistory, title: "Add query to saved history" }, "Save Query"),
+                  h("button", { className: model.expandSavedOptions ? "slds-button slds-button_neutral toggle contract" : "slds-button slds-button_neutral toggle expand", title: "Show More Options", onClick: this.onToggleSavedOptions }, h("div", { className: "button-toggle-icon" }))
                 ),
-                h("div", {className: "slds-dropdown-trigger slds-dropdown-trigger_click " + (model.expandSavedOptions ? "slds-is-open" : "slds-is-closed")},
-                  h("div", {className: "slds-dropdown slds-dropdown_right"},
-                    h("div", {className: "slds-dropdown__item"},
-                      h("a", {href: "#", onClick: this.onRemoveFromHistory, title: "Remove query from saved history"}, "Remove Saved Query")
+                h("div", { className: "slds-dropdown-trigger slds-dropdown-trigger_click " + (model.expandSavedOptions ? "slds-is-open" : "slds-is-closed") },
+                  h("div", { className: "slds-dropdown slds-dropdown_right" },
+                    h("div", { className: "slds-dropdown__item" },
+                      h("a", { href: "#", onClick: this.onRemoveFromHistory, title: "Remove query from saved history" }, "Remove Saved Query")
                     ),
-                    h("div", {className: "slds-dropdown__item"},
-                      h("a", {href: "#", onClick: this.onClearSavedHistory, title: "Clear saved history"}, "Clear Saved Queries")
+                    h("div", { className: "slds-dropdown__item" },
+                      h("a", { href: "#", onClick: this.onClearSavedHistory, title: "Clear saved history" }, "Clear Saved Queries")
                     )
                   )
                 ),
               ),
-              h("div", {className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center"},
-                h("div", {className: "slds-col slds-size_12-of-12"},
-                  h("label", {className: "slds-checkbox_toggle slds-grid slds-m-right_x-large", title: model.supportsQueryAll() ? "Include deleted and archived records" : "The Tooling API has no queryAll equivalent"},
-                    h("span", {className: "slds-form-element__label slds-m-bottom_none"}, "Deleted/Archived Records"),
+              h("div", { className: "slds-grid slds-grid_align-spread slds-grid_vertical-align-center" },
+                h("div", { className: "slds-col slds-size_12-of-12" },
+                  h("label", { className: "slds-checkbox_toggle slds-grid slds-m-right_x-large", title: model.supportsQueryAll() ? "Include deleted and archived records" : "The Tooling API has no queryAll equivalent" },
+                    h("span", { className: "slds-form-element__label slds-m-bottom_none" }, "Deleted/Archived Records"),
                     h("input", {
                       type: "checkbox",
                       name: "checkbox-toggle-queryAll",
@@ -3478,10 +3511,10 @@ class App extends React.Component {
                       onChange: this.onQueryAllChange,
                       disabled: !model.supportsQueryAll()
                     }),
-                    h("span", {id: "checkbox-toggle-queryAll", className: "slds-checkbox_faux_container"},
-                      h("span", {className: "slds-checkbox_faux"}),
-                      h("span", {className: "slds-checkbox_on"}, "Enabled"),
-                      h("span", {className: "slds-checkbox_off"}, "Disabled")
+                    h("span", { id: "checkbox-toggle-queryAll", className: "slds-checkbox_faux_container" },
+                      h("span", { className: "slds-checkbox_faux" }),
+                      h("span", { className: "slds-checkbox_on" }, "Enabled"),
+                      h("span", { className: "slds-checkbox_off" }, "Disabled")
                     )
                   )
                 ),
@@ -3491,81 +3524,81 @@ class App extends React.Component {
               className: "query-tabs",
               onDragLeave: this.onTabDragLeave
             },
-            model.queryTabs.map((tab, index) =>
+              model.queryTabs.map((tab, index) =>
+                h("div", {
+                  key: index,
+                  className: `query-tab ${index === model.activeTabIndex ? "active" : ""} ${this.state.draggedTabIndex === index ? "dragging" : ""} ${this.state.dropTargetIndex === index ? "drop-target" : ""}`,
+                  onClick: e => this.onTabClick(e, index),
+                  draggable: true,
+                  onDragStart: e => this.onTabDragStart(e, index),
+                  onDragOver: e => this.onTabDragOver(e, index),
+                  onDragLeave: e => this.onTabDragLeave(e),
+                  onDrop: e => this.onTabDrop(e, index),
+                  onDragEnd: e => this.onTabDragEnd(e),
+                  onContextMenu: e => this.onTabContextMenu(e, index)
+                },
+                  this.state.editingTabIndex === index
+                    ? h("input", {
+                      type: "text",
+                      className: "query-tab-name-input",
+                      value: this.state.editingTabName,
+                      onChange: e => this.setState({ editingTabName: e.target.value }),
+                      onBlur: e => this.onTabNameSubmit(e, index),
+                      onKeyPress: e => {
+                        if (e.key === "Enter") {
+                          this.onTabNameSubmit(e, index);
+                        }
+                      },
+                      onKeyDown: e => {
+                        if (e.key === "Escape") {
+                          this.setState({
+                            editingTabIndex: -1,
+                            editingTabName: ""
+                          });
+                        }
+                        e.stopPropagation();
+                      },
+                      autoFocus: true,
+                      onClick: e => e.stopPropagation()
+                    })
+                    : h("span", {
+                      className: "query-tab-name",
+                      onDoubleClick: e => this.onTabNameEdit(e, index),
+                      title: "Double-click to edit tab name"
+                    }, tab.name),
+                  h("span", {
+                    className: "query-tab-close",
+                    onClick: e => this.onRemoveTab(e, index),
+                    title: "Close tab"
+                  }, "×")
+                )
+              ),
               h("div", {
-                key: index,
-                className: `query-tab ${index === model.activeTabIndex ? "active" : ""} ${this.state.draggedTabIndex === index ? "dragging" : ""} ${this.state.dropTargetIndex === index ? "drop-target" : ""}`,
-                onClick: e => this.onTabClick(e, index),
-                draggable: true,
-                onDragStart: e => this.onTabDragStart(e, index),
-                onDragOver: e => this.onTabDragOver(e, index),
-                onDragLeave: e => this.onTabDragLeave(e),
-                onDrop: e => this.onTabDrop(e, index),
-                onDragEnd: e => this.onTabDragEnd(e),
-                onContextMenu: e => this.onTabContextMenu(e, index)
-              },
-              this.state.editingTabIndex === index
-                ? h("input", {
-                  type: "text",
-                  className: "query-tab-name-input",
-                  value: this.state.editingTabName,
-                  onChange: e => this.setState({editingTabName: e.target.value}),
-                  onBlur: e => this.onTabNameSubmit(e, index),
-                  onKeyPress: e => {
-                    if (e.key === "Enter") {
-                      this.onTabNameSubmit(e, index);
-                    }
-                  },
-                  onKeyDown: e => {
-                    if (e.key === "Escape") {
-                      this.setState({
-                        editingTabIndex: -1,
-                        editingTabName: ""
-                      });
-                    }
-                    e.stopPropagation();
-                  },
-                  autoFocus: true,
-                  onClick: e => e.stopPropagation()
-                })
-                : h("span", {
-                  className: "query-tab-name",
-                  onDoubleClick: e => this.onTabNameEdit(e, index),
-                  title: "Double-click to edit tab name"
-                }, tab.name),
-              h("span", {
-                className: "query-tab-close",
-                onClick: e => this.onRemoveTab(e, index),
-                title: "Close tab"
-              }, "×")
-              )
+                className: "add-tab-button",
+                onClick: this.onAddTab,
+                title: "Add new query tab"
+              }, "+")
             ),
-            h("div", {
-              className: "add-tab-button",
-              onClick: this.onAddTab,
-              title: "Add new query tab"
-            }, "+")
-            ),
-            h("div", {className: "query-editor"},
-              h("pre", {className: "query-highlight", ref: "queryHighlight", "aria-hidden": "true"},
-                h("code", {className: "language-sql", ref: "queryHighlightCode"})
+            h("div", { className: "query-editor" },
+              h("pre", { className: "query-highlight", ref: "queryHighlight", "aria-hidden": "true" },
+                h("code", { className: "language-sql", ref: "queryHighlightCode" })
               ),
               h("textarea", {
                 id: "query",
                 ref: "query",
                 spellCheck: false,
-                style: {maxHeight: (model.winInnerHeight - 200) + "px"},
+                style: { maxHeight: (model.winInnerHeight - 200) + "px" },
                 onChange: this.onQueryInput
               })
             ),
-            h("div", {className: "autocomplete-box" + (model.expandAutocomplete ? " expanded" : "")},
-              h("div", {className: "autocomplete-header"},
-                h("span", {className: "slds-m-left_xx-small"}, model.autocompleteResults.title),
-                h("ul", {className: "slds-button-group-row flex-right"},
-                  h("li", {className: "slds-button-group-item slds-m-right_x-small"},
-                    h("div", {className: "slds-radio_button-group", role: "radiogroup", "aria-label": "Query API"},
+            h("div", { className: "autocomplete-box" + (model.expandAutocomplete ? " expanded" : "") },
+              h("div", { className: "autocomplete-header" },
+                h("span", { className: "slds-m-left_xx-small" }, model.autocompleteResults.title),
+                h("ul", { className: "slds-button-group-row flex-right" },
+                  h("li", { className: "slds-button-group-item slds-m-right_x-small" },
+                    h("div", { className: "slds-radio_button-group", role: "radiogroup", "aria-label": "Query API" },
                       apiModeOptions.map(option =>
-                        h("span", {key: option.value, className: "slds-button slds-radio_button", title: option.title},
+                        h("span", { key: option.value, className: "slds-button slds-radio_button", title: option.title },
                           h("input", {
                             type: "radio",
                             name: "query-api-mode",
@@ -3574,14 +3607,14 @@ class App extends React.Component {
                             checked: model.queryApiMode === option.value,
                             onChange: this.onQueryApiModeChange
                           }),
-                          h("label", {className: "slds-radio_button__label", htmlFor: `query-api-mode-${option.value}`},
-                            h("span", {className: "slds-radio_faux"}, option.label)
+                          h("label", { className: "slds-radio_button__label", htmlFor: `query-api-mode-${option.value}` },
+                            h("span", { className: "slds-radio_faux" }, option.label)
                           )
                         )
                       )
                     )
                   ),
-                  h("li", {className: "slds-button-group-item"},
+                  h("li", { className: "slds-button-group-item" },
                     h("button", {
                       tabIndex: 1,
                       disabled: model.isBulk() ? model.isBulkJobRunning() : model.isWorking,
@@ -3590,57 +3623,57 @@ class App extends React.Component {
                       className: "slds-button slds-button_brand"
                     }, "Run Export")
                   ),
-                  h("li", {className: "slds-button-group-item"},
-                    isOptionEnabled("export-query", this.state.hideButtonsOption) ? h("button", {tabIndex: 2, onClick: this.onCopyQuery, title: "Copy query url", className: "slds-button slds-button_neutral copy-id"}, "Export Query") : null
+                  h("li", { className: "slds-button-group-item" },
+                    isOptionEnabled("export-query", this.state.hideButtonsOption) ? h("button", { tabIndex: 2, onClick: this.onCopyQuery, title: "Copy query url", className: "slds-button slds-button_neutral copy-id" }, "Export Query") : null
                   ),
-                  h("li", {className: "slds-button-group-item"},
-                    h("button", {tabIndex: 3, onClick: this.onQueryPlan, title: "Run Query Plan", className: "slds-button slds-button_neutral"}, "Query Plan")
+                  h("li", { className: "slds-button-group-item" },
+                    h("button", { tabIndex: 3, onClick: this.onQueryPlan, title: "Run Query Plan", className: "slds-button slds-button_neutral" }, "Query Plan")
                   ),
-                  h("li", {className: "slds-button-group-item"},
-                    h("a", {tabIndex: 4, className: "slds-button slds-button_neutral", hidden: !model.autocompleteResults.sobjectName, href: model.showDescribeUrl(), target: "_blank", title: "Show field info for the " + model.autocompleteResults.sobjectName + " object"}, model.autocompleteResults.sobjectName + " Field Info")
+                  h("li", { className: "slds-button-group-item" },
+                    h("a", { tabIndex: 4, className: "slds-button slds-button_neutral", hidden: !model.autocompleteResults.sobjectName, href: model.showDescribeUrl(), target: "_blank", title: "Show field info for the " + model.autocompleteResults.sobjectName + " object" }, model.autocompleteResults.sobjectName + " Field Info")
                   ),
-                  h("li", {className: "slds-button-group-item"},
-                    h("div", {className: "slds-dropdown-trigger"},
-                      h("button", {tabIndex: 5, href: "#", className: model.expandAutocomplete ? "slds-button slds-button_icon slds-button_icon-more toggle contract" : "slds-button slds-button_icon slds-button_icon-more toggle expand", onClick: this.onToggleExpand, title: "Show all suggestions or only the first line"},
-                        h("div", {className: "button-icon"}),
-                        h("div", {className: "button-toggle-icon"})
+                  h("li", { className: "slds-button-group-item" },
+                    h("div", { className: "slds-dropdown-trigger" },
+                      h("button", { tabIndex: 5, href: "#", className: model.expandAutocomplete ? "slds-button slds-button_icon slds-button_icon-more toggle contract" : "slds-button slds-button_icon slds-button_icon-more toggle expand", onClick: this.onToggleExpand, title: "Show all suggestions or only the first line" },
+                        h("div", { className: "button-icon" }),
+                        h("div", { className: "button-toggle-icon" })
                       )
                     ))
                 ),
               ),
-              h("div", {className: "autocomplete-results slds-m-top_small", ref: "autocompleteResults"},
+              h("div", { className: "autocomplete-results slds-m-top_small", ref: "autocompleteResults" },
                 model.autocompleteResults.results.map(r => (
-                  h("span", {className: "slds-pill slds-pill_link slds-m-vertical_xxx-small", key: r.value},
-                    h("span", {className: "slds-pill__icon_container " + r.autocompleteType + " " + r.dataType},
-                      h("span", {className: "sfir-autocomplete-icon"})
+                  h("span", { className: "slds-pill slds-pill_link slds-m-vertical_xxx-small", key: r.value },
+                    h("span", { className: "slds-pill__icon_container " + r.autocompleteType + " " + r.dataType },
+                      h("span", { className: "sfir-autocomplete-icon" })
                     ),
-                    h("a", {tabIndex: 0, title: r.title, onClick: e => { e.preventDefault(); model.autocompleteClick(r); model.didUpdate(); }, href: "#", className: "slds-pill__action slds-p-right_x-small"},
-                      h("span", {className: "slds-pill__label field-suggestions-label"}, r.value)
+                    h("a", { tabIndex: 0, title: r.title, onClick: e => { e.preventDefault(); model.autocompleteClick(r); model.didUpdate(); }, href: "#", className: "slds-pill__action slds-p-right_x-small" },
+                      h("span", { className: "slds-pill__label field-suggestions-label" }, r.value)
                     )
                   )))
               ),
             ),
-            !model.showHelp ? null : h("div", {className: "slds-box slds-theme_info slds-m-top_medium"},
-              h("h3", {className: "slds-text-heading_small slds-m-bottom_small"}, "Export Help"),
-              h("p", {className: "slds-m-bottom_x-small"}, "Use for quick one-off data exports. Enter a ",
-                h("a", {href: "https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql.htm", target: "_blank"}, "SOQL"),
-                h("a", {href: "https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_sosl.htm", target: "_blank"}, ", SOSL "),
-                h("a", {href: "https://developer.salesforce.com/docs/platform/graphql/guide/query-record-examples.html", target: "_blank"}, ", GraphQL"),
+            !model.showHelp ? null : h("div", { className: "slds-box slds-theme_info slds-m-top_medium" },
+              h("h3", { className: "slds-text-heading_small slds-m-bottom_small" }, "Export Help"),
+              h("p", { className: "slds-m-bottom_x-small" }, "Use for quick one-off data exports. Enter a ",
+                h("a", { href: "https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql.htm", target: "_blank" }, "SOQL"),
+                h("a", { href: "https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_sosl.htm", target: "_blank" }, ", SOSL "),
+                h("a", { href: "https://developer.salesforce.com/docs/platform/graphql/guide/query-record-examples.html", target: "_blank" }, ", GraphQL"),
                 " query in the box above and press Export."
               ),
-              h("p", {className: "slds-m-bottom_x-small"}, "Press Ctrl+Space to insert all field name autosuggestions or to load suggestions for field values."),
-              h("p", {className: "slds-m-bottom_x-small"}, "Press Ctrl+' to wrap the selected text in single quotes, or remove them if already present."),
-              h("p", {className: "slds-m-bottom_x-small"}, "Press Ctrl+Enter or F5 to execute the export."),
+              h("p", { className: "slds-m-bottom_x-small" }, "Press Ctrl+Space to insert all field name autosuggestions or to load suggestions for field values."),
+              h("p", { className: "slds-m-bottom_x-small" }, "Press Ctrl+' to wrap the selected text in single quotes, or remove them if already present."),
+              h("p", { className: "slds-m-bottom_x-small" }, "Press Ctrl+Enter or F5 to execute the export."),
               h("p", {}, "Those shortcuts can be customized in chrome://extensions/shortcuts"),
-              h("p", {className: "slds-m-bottom_x-small"}, "Supports the full SOQL language. The columns in the CSV output depend on the returned data. Using subqueries may cause the output to grow rapidly."),
-              h("p", {className: "slds-m-bottom_x-small"}, "For large result sets, pick Bulk API 2.0. The query then runs asynchronously on Salesforce and the result is downloaded straight to a CSV file instead of being rendered into the table, which is what usually freezes the tab. The job keeps running if you close or reload this page, and is picked back up when you return. Threads do not apply, since Salesforce parallelises bulk queries server-side.")
+              h("p", { className: "slds-m-bottom_x-small" }, "Supports the full SOQL language. The columns in the CSV output depend on the returned data. Using subqueries may cause the output to grow rapidly."),
+              h("p", { className: "slds-m-bottom_x-small" }, "For large result sets, pick Bulk API 2.0. The query then runs asynchronously on Salesforce and the result is downloaded straight to a CSV file instead of being rendered into the table, which is what usually freezes the tab. The job keeps running if you close or reload this page, and is picked back up when you return. Threads do not apply, since Salesforce parallelises bulk queries server-side.")
             ),
-            h("div", {hidden: !model.showAI},
-              h("h3", {className: "slds-text-heading_small slds-m-top_medium slds-m-left_xxx-small"}, "Agentforce SOQL query builder"),
-              h("p", {className: "slds-m-bottom_xx-small slds-m-left_xxx-small"}, "Enter a description of the SOQL you want to be generated"),
-              h("textarea", {id: "prompt", ref: "prompt"}),
-              h("div", {className: "slds-text-align_right slds-m-top_small"},
-                h("button", {tabIndex: 1, onClick: this.onGenerateSoql, title: "Generate SOQL", className: "slds-button slds-button_brand"}, "Generate SOQL")
+            h("div", { hidden: !model.showAI },
+              h("h3", { className: "slds-text-heading_small slds-m-top_medium slds-m-left_xxx-small" }, "Agentforce SOQL query builder"),
+              h("p", { className: "slds-m-bottom_xx-small slds-m-left_xxx-small" }, "Enter a description of the SOQL you want to be generated"),
+              h("textarea", { id: "prompt", ref: "prompt" }),
+              h("div", { className: "slds-text-align_right slds-m-top_small" },
+                h("button", { tabIndex: 1, onClick: this.onGenerateSoql, title: "Generate SOQL", className: "slds-button slds-button_brand" }, "Generate SOQL")
               )
             )
           )),
@@ -3657,32 +3690,32 @@ class App extends React.Component {
               flexDirection: "column"
             }
           },
-          h("div", {className: "slds-card__body slds-card__body_inner", style: {flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column"}},
-            h("div", {className: "result-bar"},
-              h("h3", {className: "slds-text-heading_small"}, "Export Result"),
-              h("div", {className: "slds-button-group slds-m-left_small"},
-                h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onCopyAsExcel, title: "Copy exported data to clipboard for pasting into Excel or similar"},
-                  h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "Excel"
+          h("div", { className: "slds-card__body slds-card__body_inner", style: { flex: "1 1 0", minHeight: 0, display: "flex", flexDirection: "column" } },
+            h("div", { className: "result-bar" },
+              h("h3", { className: "slds-text-heading_small" }, "Export Result"),
+              h("div", { className: "slds-button-group slds-m-left_small" },
+                h("button", { className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onCopyAsExcel, title: "Copy exported data to clipboard for pasting into Excel or similar" },
+                  h("svg", { className: "slds-button__icon slds-button__icon_left" }, h("use", { xlinkHref: "symbols.svg#copy" })), "Excel"
                 ),
-                h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onCopyAsCsv, title: "Copy exported data to clipboard for saving as a CSV file"},
-                  h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "CSV"
+                h("button", { className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onCopyAsCsv, title: "Copy exported data to clipboard for saving as a CSV file" },
+                  h("svg", { className: "slds-button__icon slds-button__icon_left" }, h("use", { xlinkHref: "symbols.svg#copy" })), "CSV"
                 ),
                 isOptionEnabled("export-json", this.state.hideButtonsOption, true)
-                  ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onCopyAsJson, title: "Copy raw API output to clipboard"},
-                      h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "JSON"
-                    ) : null,
+                  ? h("button", { className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onCopyAsJson, title: "Copy raw API output to clipboard" },
+                    h("svg", { className: "slds-button__icon slds-button__icon_left" }, h("use", { xlinkHref: "symbols.svg#copy" })), "JSON"
+                  ) : null,
                 isOptionEnabled("export-markdown", this.state.hideButtonsOption, false)
-                  ? h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isBulk(), onClick: this.onCopyAsMarkdown, title: "Copy exported data as a Markdown table"},
-                      h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#copy"})), "Markdown"
-                    ) : null,
-                h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onDownloadAsCsv, title: "Download as a CSV file"},
-                  h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#download"})), "CSV"
+                  ? h("button", { className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isBulk(), onClick: this.onCopyAsMarkdown, title: "Copy exported data as a Markdown table" },
+                    h("svg", { className: "slds-button__icon slds-button__icon_left" }, h("use", { xlinkHref: "symbols.svg#copy" })), "Markdown"
+                  ) : null,
+                h("button", { className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onDownloadAsCsv, title: "Download as a CSV file" },
+                  h("svg", { className: "slds-button__icon slds-button__icon_left" }, h("use", { xlinkHref: "symbols.svg#download" })), "CSV"
                 ),
                 h("button", {
                   className: "slds-button slds-button_neutral",
                   disabled: !model.canCopy() || model.isBulk(),
                   onClick: (e) => { if (!model.canDownloadXlsx()) { e.preventDefault(); e.currentTarget.blur(); return; } this.onDownloadAsXlsx(); },
-                  style: ((model.canCopy() && !model.canDownloadXlsx()) || model.isBulk()) ? {color: "#c9c7c5", cursor: "not-allowed"} : {},
+                  style: ((model.canCopy() && !model.canDownloadXlsx()) || model.isBulk()) ? { color: "#c9c7c5", cursor: "not-allowed" } : {},
                   title: (() => {
                     if (model.isBulk()) return "Not available for Bulk API exports";
                     if (!model.canCopy() || model.canDownloadXlsx()) return "Download as an XLSX file";
@@ -3693,18 +3726,18 @@ class App extends React.Component {
                       : "Dataset is too large for XLSX (> 2M cells). Use CSV instead.";
                   })()
                 },
-                  h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#download"})), "XLSX"
+                  h("svg", { className: "slds-button__icon slds-button__icon_left" }, h("use", { xlinkHref: "symbols.svg#download" })), "XLSX"
                 ),
-                h("button", {className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onPrefHideRelationsChange, title: `${model.prefHideRelations ? "Show" : "Hide"} Object Columns`},
-                  h("svg", {className: `slds-button__icon ${model.prefHideRelations ? "" : "disabled"}`},
-                    h("use", {xlinkHref: "symbols.svg#hide"})
+                h("button", { className: "slds-button slds-button_neutral", disabled: !model.canCopy() || model.isResultTableHidden(), onClick: this.onPrefHideRelationsChange, title: `${model.prefHideRelations ? "Show" : "Hide"} Object Columns` },
+                  h("svg", { className: `slds-button__icon ${model.prefHideRelations ? "" : "disabled"}` },
+                    h("use", { xlinkHref: "symbols.svg#hide" })
                   )
                 ),
                 isOptionEnabled("delete", this.state.hideButtonsOption)
-                  ? h("button", {className: "slds-button slds-button_destructive delete-btn", disabled: !model.canDelete() || model.isResultTableHidden(), onClick: this.onDeleteRecords, title: "Open the 'Data Import' page with preloaded records to delete (< 20k records). 'Id' field needs to be queried"}, "Delete Records") : null,
+                  ? h("button", { className: "slds-button slds-button_destructive delete-btn", disabled: !model.canDelete() || model.isResultTableHidden(), onClick: this.onDeleteRecords, title: "Open the 'Data Import' page with preloaded records to delete (< 20k records). 'Id' field needs to be queried" }, "Delete Records") : null,
               ),
-              model.exportedData && model.exportedData.table[0]?.length > 0 && !model.exportError && !model.isResultTableHidden() ? h("div", {className: "slds-form-element"},
-                h("div", {className: "slds-form-element__control slds-input-has-icon slds-input-has-icon_left slds-m-left_small slds-button-group"},
+              model.exportedData && model.exportedData.table[0]?.length > 0 && !model.exportError && !model.isResultTableHidden() ? h("div", { className: "slds-form-element" },
+                h("div", { className: "slds-form-element__control slds-input-has-icon slds-input-has-icon_left slds-m-left_small slds-button-group" },
                   h("input", {
                     ref: "resultsFilter",
                     className: "slds-input slds-button slds-m-around_none",
@@ -3717,8 +3750,8 @@ class App extends React.Component {
                     value: model.resultsFilter,
                     onInput: this.onResultsFilterInput
                   }),
-                  h("button", {className: "toggle expand slds-button slds-button_neutral" + (this.state.isDropdownOpen ? " contract" : " expand"), title: "Show More Filters", disabled: !model.exportedData, onClick: () => this.setState({isDropdownOpen: !this.state.isDropdownOpen})}, h("div", {className: "button-toggle-icon"})),
-                  this.state.isDropdownOpen && h("div", {className: "dropdown-menu"},
+                  h("button", { className: "toggle expand slds-button slds-button_neutral" + (this.state.isDropdownOpen ? " contract" : " expand"), title: "Show More Filters", disabled: !model.exportedData, onClick: () => this.setState({ isDropdownOpen: !this.state.isDropdownOpen }) }, h("div", { className: "button-toggle-icon" })),
+                  this.state.isDropdownOpen && h("div", { className: "dropdown-menu" },
                     model.exportedData?.table[0]
                       ?.filter(column => column !== "_")
                       .map(column =>
@@ -3735,21 +3768,21 @@ class App extends React.Component {
                             this.setState({}); // Trigger re-render
                           }
                         },
-                        h("input", {
-                          type: "checkbox",
-                          checked: model.filterColumns?.includes(column) || false,
-                          readOnly: true
-                        }),
-                        column
+                          h("input", {
+                            type: "checkbox",
+                            checked: model.filterColumns?.includes(column) || false,
+                            readOnly: true
+                          }),
+                          column
                         )
                       )
                   )
                 )
               ) : null,
-              h("span", {className: "result-status flex-right"},
-                h("span", {className: `slds-badge slds-theme_${model.exportError ? "error" : "success"}`}, model.exportStatus),
-                perf && h("span", {className: "result-info", title: perf.batchStats}, perf.text),
-                h("button", {className: "slds-button slds-button_destructive slds-m-left_small", disabled: !model.isWorking || model.isBulk(), onClick: this.onStopExport}, "Stop")
+              h("span", { className: "result-status flex-right" },
+                h("span", { className: `slds-badge slds-theme_${model.exportError ? "error" : "success"}` }, model.exportStatus),
+                perf && h("span", { className: "result-info", title: perf.batchStats }, perf.text),
+                h("button", { className: "slds-button slds-button_destructive slds-m-left_small", disabled: !model.isWorking || model.isBulk(), onClick: this.onStopExport }, "Stop")
               ),
             ),
             h("textarea", {
@@ -3757,7 +3790,7 @@ class App extends React.Component {
               readOnly: true,
               value: nullToEmptyString(model.exportError),
               hidden: model.exportError == null,
-              style: {flex: "1 1 0", minHeight: 0, resize: "none"}
+              style: { flex: "1 1 0", minHeight: 0, resize: "none" }
             }),
             h("div", {
               className: "slds-text-body_small slds-text-color_weak slds-p-around_medium",
@@ -3766,43 +3799,43 @@ class App extends React.Component {
             h("div", {
               ref: "scroller",
               hidden: model.exportError != null || model.isResultTableHidden(),
-              style: {flex: "1 1 0", minHeight: 0, maxHeight: "100%", overflowY: "auto"}
+              style: { flex: "1 1 0", minHeight: 0, maxHeight: "100%", overflowY: "auto" }
             }
             )
           )
         ),
         this.state.contextMenu && h("div", {
           className: "context-menu-overlay",
-          style: {position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000},
+          style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 },
           onClick: this.onCloseContextMenu,
           onContextMenu: this.onOverlayContextMenu
         }),
         this.state.contextMenu && h("div", {
           className: "slds-dropdown slds-dropdown_left slds-dropdown_small",
-          style: {position: "fixed", top: this.state.contextMenu.y, left: this.state.contextMenu.x, zIndex: 3000}
+          style: { position: "fixed", top: this.state.contextMenu.y, left: this.state.contextMenu.x, zIndex: 3000 }
         },
-        h("ul", {className: "slds-dropdown__list", role: "menu"},
-          h("li", {className: "slds-dropdown__item", role: "presentation"},
-            h("a", {href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveTab(e, this.state.contextMenu.index); this.onCloseContextMenu(); }},
-              h("span", {className: "slds-truncate", title: "Close"}, "Close")
-            )
-          ),
-          h("li", {className: "slds-dropdown__item", role: "presentation"},
-            h("a", {href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveOtherTabs(); }},
-              h("span", {className: "slds-truncate", title: "Close Others"}, "Close Others")
-            )
-          ),
-          h("li", {className: "slds-dropdown__item", role: "presentation"},
-            h("a", {href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveRightTabs(); }},
-              h("span", {className: "slds-truncate", title: "Close to the Right"}, "Close to the Right")
-            )
-          ),
-          h("li", {className: "slds-dropdown__item", role: "presentation"},
-            h("a", {href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveAllTabs(); }},
-              h("span", {className: "slds-truncate", title: "Close All"}, "Close All")
+          h("ul", { className: "slds-dropdown__list", role: "menu" },
+            h("li", { className: "slds-dropdown__item", role: "presentation" },
+              h("a", { href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveTab(e, this.state.contextMenu.index); this.onCloseContextMenu(); } },
+                h("span", { className: "slds-truncate", title: "Close" }, "Close")
+              )
+            ),
+            h("li", { className: "slds-dropdown__item", role: "presentation" },
+              h("a", { href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveOtherTabs(); } },
+                h("span", { className: "slds-truncate", title: "Close Others" }, "Close Others")
+              )
+            ),
+            h("li", { className: "slds-dropdown__item", role: "presentation" },
+              h("a", { href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveRightTabs(); } },
+                h("span", { className: "slds-truncate", title: "Close to the Right" }, "Close to the Right")
+              )
+            ),
+            h("li", { className: "slds-dropdown__item", role: "presentation" },
+              h("a", { href: "#", role: "menuitem", tabIndex: "-1", onClick: (e) => { e.preventDefault(); this.onRemoveAllTabs(); } },
+                h("span", { className: "slds-truncate", title: "Close All" }, "Close All")
+              )
             )
           )
-        )
         )
       )
     );
@@ -3821,9 +3854,9 @@ class App extends React.Component {
   sfConn.getSession(sfHost).then(() => {
 
     let root = document.getElementById("root");
-    let model = new Model({sfHost, args});
+    let model = new Model({ sfHost, args });
     model.reactCallback = cb => {
-      ReactDOM.render(h(App, {model}), root, cb);
+      ReactDOM.render(h(App, { model }), root, cb);
     };
 
     // Update host and sfLink after session is established (for OAuth redirect case)
@@ -3833,7 +3866,7 @@ class App extends React.Component {
       model.orgName = model.sfHost.split(".")[0]?.toUpperCase() || "";
     }
 
-    ReactDOM.render(h(App, {model}), root);
+    ReactDOM.render(h(App, { model }), root);
   });
 
 }
@@ -3864,7 +3897,7 @@ function buildCsvPreview(csv, rowLimit = 20) {
   const head = cut === -1 ? csv : csv.slice(0, cut);
   try {
     const rows = csvParse(head, ",");
-    return rows.length > 1 ? {header: rows[0], rows: rows.slice(1)} : null;
+    return rows.length > 1 ? { header: rows[0], rows: rows.slice(1) } : null;
   } catch {
     return null;
   }

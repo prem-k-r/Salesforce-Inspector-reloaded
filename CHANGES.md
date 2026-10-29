@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Data Export` Fix query editor colouring for SOQL and SOSL: only their reserved words are coloured as keywords, so field names such as Status, Type or Language and objects such as Case or Order no longer look like SQL keywords, and the object after `FROM` or `RETURNING` gets its own colour [issue #1429](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1429) (contribution by [Camille Guillory](https://github.com/CamilleGuillory))
 - `Data Import` Fix confirmation popup getting stuck and locking the page when Custom Headers is not valid JSON [issue #1425](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1425) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Logs Viewer` Fix UI and sorting related issues [issue #1321](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1321) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix autocomplete replacing only the text before the caret when picking a suggestion inside a word, which left the rest of the word behind [issue #1407](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1407) (contribution by [Prem Kumar](https://github.com/prem-k-r))
