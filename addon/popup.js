@@ -301,7 +301,7 @@ class App extends React.PureComponent {
       Escape: ["", "quit"],
     };
     const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (!Object.hasOwn(actionMap, key)) {
+    if (!actionMap[key]) {
       return;
     }
     e.preventDefault();
