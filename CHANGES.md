@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Popup` Fix keyboard shortcuts: `REST Explorer` is now reachable with `T` (it was underlined `R`, which opens the Org tab), `Object Scanner` and `Generate Access Token` get their own shortcuts (`J` and `K`) instead of an underlined letter that was already used, and shortcuts now also work when Caps Lock is on [issue #1442](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1442) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Fix query editor colouring for SOQL and SOSL: only their reserved words are coloured as keywords, so field names such as Status, Type or Language and objects such as Case or Order no longer look like SQL keywords, and the object after `FROM` or `RETURNING` gets its own colour [issue #1429](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1429) (contribution by [Camille Guillory](https://github.com/CamilleGuillory))
 - `Data Import` Fix confirmation popup getting stuck and locking the page when Custom Headers is not valid JSON [issue #1425](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1425) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Logs Viewer` Fix UI and sorting related issues [issue #1321](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1321) (contribution by [Prem Kumar](https://github.com/prem-k-r))
