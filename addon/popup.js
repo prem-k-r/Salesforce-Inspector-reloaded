@@ -584,7 +584,7 @@ class App extends React.PureComponent {
             ),
             h("div", {className: "slds-col slds-size_1-of-1 slds-p-horizontal_xx-small  slds-m-bottom_xx-small"},
               h("a", {ref: "metaRetrieveBtn", href: `metadata-retrieve${useLegacyDownloadMetadata ? "-legacy" : ""}.html?${hostArg}`, target: linkTarget, className: "page-button slds-button slds-button_neutral"},
-                h("span", {}, h("u", {}, "D"), "ownload Metadata")
+                h("span", {}, "Download Meta", h("u", {}, "d"), "ata")
               )
             ),
             h("div", {className: "slds-col slds-size_1-of-1 slds-p-horizontal_xx-small  slds-m-bottom_xx-small"},
@@ -4574,7 +4574,7 @@ class AllDataSelection extends React.PureComponent {
             className:
                 "slds-button slds-button_neutral slds-m-top_xx-small page-button slds-button slds-button_neutral slds-m-top_xx-small",
           },
-          h("span", {}, "Show ", h("u", {}, "f"), "ields API names")
+          h("span", {}, "Show ", h("u", {}, "f"), "ield API names")
         )
         : null,
       selectedValue.sobject.name.endsWith("__e")
