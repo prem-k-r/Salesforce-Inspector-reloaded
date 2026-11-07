@@ -13,6 +13,14 @@ const MAX_HIGHLIGHT_LENGTH = 20000;
 // Delay for the autocomplete execution on massive queries
 const AUTOCOMPLETE_DEBOUNCE_MS = 200;
 
+const STRING_LITERAL_REGEX = /(?:'(?:[^'\\]+|\\.)*'|"(?:[^"\\]+|\\.)*")/g;
+const MULTIPLE_COMMAS_REGEX = /,(?:\s*,)+/g;
+const COMMA_BEFORE_FROM_REGEX = /,\s*FROM\b/gi;
+const HORIZONTAL_SPACE_REGEX = /[^\S\r\n]+/g; // Matches spaces and tabs, but NOT newlines
+const MULTISPACE_REGEX = /\s+/g; // Matches ALL whitespace (including newlines)
+const RESTORE_STRING_REGEX = /__STRING_(\d+)__/g;
+const SOQL_SOSL_KEYWORDS_REGEX = /\b(?:FIND|RETURNING|SELECT|FROM|WHERE|WITH|GROUP\s+BY|HAVING|ORDER\s+BY|LIMIT|OFFSET|IN|AND|OR|LIKE|NOT|ASC|DESC|NULL)\b/gi;
+
 // Mutually exclusive query execution modes
 const API_MODE = {
   STANDARD: "Standard",
@@ -475,6 +483,7 @@ class Model {
     this.separator = getSeparator();
     this.soqlPrompt = "";
     this.enableQueryTypoFix = localStorage.getItem("enableQueryTypoFix") == "true";
+    this.enableQueryAutoFormat = localStorage.getItem("enableQueryAutoFormat") == "true";
 
     // Initialize user info model - handles all user-related properties
     this.userInfoModel = new UserInfoModel(this.spinFor.bind(this));
@@ -1437,17 +1446,31 @@ class Model {
       return;
     }
   }
-  removeTypo(query) {
-    // Remove double commas
-    query = query.replace(/,\s*,/g, ",");
-    // Remove comma before FROM
-    query = query.replace(/,\s+FROM\s+/gi, " FROM ");
-    // Remove trailing comma before FROM
-    query = query.replace(/,\s*FROM\s+/gi, " FROM ");
-    // Remove multiple spaces
-    query = query.replace(/\s+/g, " ");
-
-    return query.trim();
+  cleanQuery(query, applyTypoFix, applyAutoFormat) {
+    if (isGraphqlQuery(query)) {
+      return query.trim();
+    }
+    // Mask string literals
+    let strings = [];
+    query = query.replace(STRING_LITERAL_REGEX, (match) => {
+      strings.push(match);
+      return `__STRING_${strings.length - 1}__`;
+    });
+    // Apply Typo Fixes
+    if (applyTypoFix) {
+      query = query
+        .replace(MULTIPLE_COMMAS_REGEX, ",")
+        .replace(COMMA_BEFORE_FROM_REGEX, " FROM")
+        .replace(HORIZONTAL_SPACE_REGEX, " "); // Preserves user's line breaks
+    }
+    // Apply Auto-Formatting
+    if (applyAutoFormat) {
+      query = query
+        .replace(MULTISPACE_REGEX, " ") // Flattens all newlines into single spaces
+        .replace(SOQL_SOSL_KEYWORDS_REGEX, (kw) => kw.toUpperCase());
+    }
+    // Restore string literals
+    return query.replace(RESTORE_STRING_REGEX, (_, index) => strings[Number(index)]).trim();
   }
   doExport() {
     if (this.isBulk()) {
@@ -1463,8 +1486,11 @@ class Model {
     exportedData.describeInfo = vm.describeInfo;
     exportedData.sfHost = vm.sfHost;
     vm.initPerf();
-    let query = vm.enableQueryTypoFix ? vm.removeTypo(vm.queryInput.value) : vm.queryInput.value;
-    vm.queryInput.value = query; // Update the input value with the cleaned query
+    let query = vm.queryInput.value;
+    if (vm.enableQueryTypoFix || vm.enableQueryAutoFormat) {
+      query = vm.cleanQuery(query, vm.enableQueryTypoFix, vm.enableQueryAutoFormat);
+      vm.queryInput.value = query; // Update the input value with the cleaned query
+    }
     let splitQueries = null;
     let isSplitQueryExport = false;
     let seenRecordUrls = new Set();
