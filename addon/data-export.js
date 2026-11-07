@@ -1764,8 +1764,11 @@ class Model {
       this.bulkMessage = "A bulk export is already running - wait for it to finish or cancel it first.";
       return;
     }
-    const query = this.enableQueryTypoFix ? this.removeTypo(this.queryInput.value) : this.queryInput.value;
-    this.queryInput.value = query;
+    let query = this.queryInput.value;
+    if (this.enableQueryTypoFix || this.enableQueryAutoFormat) {
+      query = this.cleanQuery(query, this.enableQueryTypoFix, this.enableQueryAutoFormat);
+      this.queryInput.value = query;
+    }
     this.bulkMessage = null;
     this.bulkPreview = null;
     this.isQueryPlanShown = false;
