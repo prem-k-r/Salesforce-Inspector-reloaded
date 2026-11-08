@@ -2167,6 +2167,7 @@ export class App extends React.Component {
     return h("div", {onDrop: this.onDataDrop, onDragOver: this.onDataDragOver},
       h(PageHeader, {
         pageTitle: "Data Import",
+        settingsTab: "data-import",
         orgName: model.orgName,
         sfLink: model.sfLink,
         sfHost: model.sfHost,

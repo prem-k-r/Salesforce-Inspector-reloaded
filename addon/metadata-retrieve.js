@@ -1031,6 +1031,7 @@ class App extends React.Component {
         }),
         h(PageHeader, {
           pageTitle: model.title(),
+          settingsTab: "metadata",
           subTitle: model.progress == "ready" ? "Ready"
           : model.progress == "working" ? "Retrieving metadata..."
           : model.progress == "deploying" ? "Deploying metadata..."

@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Header` Add contextual settings gears to feature page headers to open the corresponding Options tab directly [feature #1344](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1344) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Header` Show the logged-in user's Salesforce profile photo when available [feature #1458](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1458) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Add keyboard shortcuts (`Alt` + `1-9`) to quickly select autocomplete suggestions, featuring dynamic visual badges when `Alt` is held [feature #1454](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1454) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Add "Auto-Capitalize Query Keywords" formatting option, and enhance "Auto-Fix Query Typos" to safely ignore string literals, preserve line breaks, bypass GraphQL queries, and resolve common syntax errors (e.g., dangling commas, duplicate operators) [issue #848](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/848), [feature #1452](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1452) (contribution by [Prem Kumar](https://github.com/prem-k-r))

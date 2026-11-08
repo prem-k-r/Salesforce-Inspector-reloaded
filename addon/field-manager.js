@@ -2157,6 +2157,7 @@ class App extends React.Component {
       })},
       h(PageHeader, {
         pageTitle: "Field Manager",
+        settingsTab: "field-manager",
         orgName: this.orgName,
         sfLink: this.sfLink,
         sfHost: this.sfHost,

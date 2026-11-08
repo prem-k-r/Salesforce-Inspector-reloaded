@@ -3664,6 +3664,7 @@ class App extends React.Component {
     return h("div", {},
       h(PageHeader, {
         pageTitle: "Data Export",
+        settingsTab: "data-export",
         orgName: model.orgName,
         sfLink: model.sfLink,
         sfHost: model.sfHost,
