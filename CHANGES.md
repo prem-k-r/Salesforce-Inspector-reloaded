@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Data Export` Add keyboard shortcuts (`Alt` + `1-9`) to quickly select autocomplete suggestions, featuring dynamic visual badges when `Alt` is held [feature #1454](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1454) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Add "Auto-Capitalize Query Keywords" formatting option, and enhance "Auto-Fix Query Typos" to safely ignore string literals, preserve line breaks, bypass GraphQL queries, and resolve common syntax errors (e.g., dangling commas, duplicate operators) [issue #848](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/848), [feature #1452](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1452) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` and `REST Explorer` Fix Query History, Saved Queries and Templates dropdown entries being clipped, and show the full query on hover [issue #1439](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1439) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix keyboard shortcuts: `REST Explorer` is now reachable with `T` (it was underlined `R`, which opens the Org tab), `Object Scanner` and `Generate Access Token` get their own shortcuts (`J` and `K`) instead of an underlined letter that was already used, and shortcuts now also work when Caps Lock is on [issue #1442](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1442) (contribution by [Prem Kumar](https://github.com/prem-k-r))
