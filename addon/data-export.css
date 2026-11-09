@@ -354,6 +354,8 @@ textarea[readonly] {
 
 .delete-btn {
   pointer-events: auto !important;
+  max-height: 32px !important;
+  line-height: 1 !important;
 }
 
 .char-btn {
