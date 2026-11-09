@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Favicon` Show the Salesforce cloud icon in the favicon color on Salesforce pages while extension pages keep the extension icon in that color, and add a delete button in Options to quickly remove the custom favicon color or link [feature #1461](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1461) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Header` Add contextual settings gears to feature page headers to open the corresponding Options tab directly [feature #1344](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1344) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Header` Show the logged-in user's profile photo when available [feature #1458](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1458) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Data Export` Add keyboard shortcuts (`Alt` + `1-9`) to quickly select autocomplete suggestions, featuring dynamic visual badges when `Alt` is held [feature #1454](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1454) (contribution by [Prem Kumar](https://github.com/prem-k-r))
