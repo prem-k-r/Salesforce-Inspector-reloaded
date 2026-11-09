@@ -90,6 +90,16 @@
   z-index: 2;
 }
 
+.data-file-choose-button[for] {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.data-file-choose-button[for]:hover {
+  box-shadow: var(--slds-s-button-bordered-shadow-hover);
+  transform: var(--slds-s-button-transform-hover);
+}
+
 .slds-button.compact-button {
   height: auto;
   min-height: 31.6px;
