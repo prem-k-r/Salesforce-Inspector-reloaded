@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Popup` Fix Flow Scanner and Flow Compare buttons don’t work from the Flow Scanner page [issue #1465](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1465) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Favicon` Show the Salesforce cloud icon in the favicon color on Salesforce pages while extension pages keep the extension icon in that color, and add a delete button in Options to quickly remove the custom favicon color or link [feature #1461](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1461) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Header` Add contextual settings gears to feature page headers to open the corresponding Options tab directly [feature #1344](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1344) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Header` Show the logged-in user's profile photo when available [feature #1458](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1458) (contribution by [Prem Kumar](https://github.com/prem-k-r))
