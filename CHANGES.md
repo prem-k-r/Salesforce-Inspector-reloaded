@@ -2,6 +2,7 @@
 
 ## Version 2.1
 
+- `Org Limits` Restyle the page UI, add live filtering by limit label or API name, and color gauges by consumption: gray at 0%, green below 100%, blue at 100%, and red above 100% [feature #1467](https://github.com/tprouvot/Salesforce-Inspector-reloaded/pull/1467) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix keyboard shortcuts: `REST Explorer` is now reachable with `T` (it was underlined `R`, which opens the Org tab), `Object Scanner` and `Generate Access Token` get their own shortcuts (`J` and `K`) instead of an underlined letter that was already used, also add `W` to open `Flow Scanner` when its button is available, and shortcuts now also work when Caps Lock is on [issue #1442](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1442) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Popup` Fix Flow Scanner and Flow Compare buttons don’t work from the Flow Scanner page [issue #1465](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1465) (contribution by [Prem Kumar](https://github.com/prem-k-r))
 - `Favicon` Show the Salesforce cloud icon in the favicon color on Salesforce pages while extension pages keep the extension icon in that color, and add a delete button in Options to quickly remove the custom favicon color or link [feature #1461](https://github.com/tprouvot/Salesforce-Inspector-reloaded/issues/1461) (contribution by [Prem Kumar](https://github.com/prem-k-r))
