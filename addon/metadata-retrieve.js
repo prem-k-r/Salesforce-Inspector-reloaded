@@ -65,9 +65,6 @@ class Model {
   }
 
   title() {
-    if (this.progress == "working") {
-      return "(Loading) Metadata";
-    }
     return "Metadata";
   }
 
@@ -93,8 +90,9 @@ class Model {
   startLoading() {
     let logWait = this.logWait.bind(this);
     (async () => {
+      this.spinnerCount++;
       try {
-        this.progress = "working";
+        this.progress = "loading";
         this.didUpdate();
 
         let metadataApi = sfConn.wsdl(apiVersion, "Metadata");
@@ -125,6 +123,9 @@ class Model {
         this.didUpdate();
       } catch (e) {
         this.logError(e);
+      } finally {
+        this.spinnerCount = Math.max(0, this.spinnerCount - 1);
+        this.didUpdate();
       }
     })();
   }
@@ -353,26 +354,50 @@ class Model {
   }
 
   formatXml(xmlString) {
-    // Parse the XML string
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+    // Pretty-print with plain DOM traversal (XSLTProcessor is deprecated in browsers)
+    const xmlDoc = new DOMParser().parseFromString(xmlString, "text/xml");
+    if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+      return xmlString;
+    }
 
-    // Use XSLT to format the XML with indentation
-    const xsltDoc = parser.parseFromString([
-      '<xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform">',
-      '  <xsl:strip-space elements="*"/>',
-      '  <xsl:template match="node()|@*">',
-      '    <xsl:copy><xsl:apply-templates select="node()|@*"/></xsl:copy>',
-      "  </xsl:template>",
-      '  <xsl:output indent="yes"/>',
-      "</xsl:stylesheet>"
-    ].join("\n"), "application/xml");
+    const indent = "  ";
+    const escText = text => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const escAttr = text => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
-    const xsltProcessor = new XSLTProcessor();
-    xsltProcessor.importStylesheet(xsltDoc);
-    const resultDoc = xsltProcessor.transformToDocument(xmlDoc);
-    const formattedXml = new XMLSerializer().serializeToString(resultDoc);
-    return formattedXml;
+    const render = (node, depth) => {
+      const pad = indent.repeat(depth);
+      switch (node.nodeType) {
+        case Node.ELEMENT_NODE: {
+          const attrs = Array.from(node.attributes).map(a => " " + a.name + "=\"" + escAttr(a.value) + "\"").join("");
+          // Like xsl:strip-space: drop whitespace-only text nodes
+          const kids = Array.from(node.childNodes).filter(c => c.nodeType !== Node.TEXT_NODE || c.nodeValue.trim() !== "");
+          if (kids.length === 0) {
+            return pad + "<" + node.nodeName + attrs + "/>";
+          }
+          if (kids.every(c => c.nodeType === Node.TEXT_NODE || c.nodeType === Node.CDATA_SECTION_NODE)) {
+            const text = kids.map(c => c.nodeType === Node.CDATA_SECTION_NODE ? "<![CDATA[" + c.nodeValue + "]]>" : escText(c.nodeValue)).join("");
+            return pad + "<" + node.nodeName + attrs + ">" + text + "</" + node.nodeName + ">";
+          }
+          return [
+            pad + "<" + node.nodeName + attrs + ">",
+            ...kids.map(c => render(c, depth + 1)),
+            pad + "</" + node.nodeName + ">"
+          ].filter(Boolean).join("\n");
+        }
+        case Node.TEXT_NODE:
+          return pad + escText(node.nodeValue.trim());
+        case Node.CDATA_SECTION_NODE:
+          return pad + "<![CDATA[" + node.nodeValue + "]]>";
+        case Node.COMMENT_NODE:
+          return pad + "<!--" + node.nodeValue + "-->";
+        case Node.PROCESSING_INSTRUCTION_NODE:
+          return pad + "<?" + node.target + " " + node.nodeValue + "?>";
+        default:
+          return "";
+      }
+    };
+
+    return Array.from(xmlDoc.childNodes).map(node => render(node, 0)).filter(Boolean).join("\n");
   }
 
   getMetadataFormat(metadataType) {
@@ -558,6 +583,7 @@ class App extends React.Component {
     this.packageXmlHighlightGuard = createChangeGuard();
     this.modalXmlHighlightGuard = createChangeGuard();
     this.wasMetadataModalVisible = false;
+    this.metadataPreviewRequestId = 0;
   }
   componentDidMount() {
     this.refs.metadataFilter.focus();
@@ -908,9 +934,11 @@ class App extends React.Component {
   }
   async onViewMetadata(metadataType, metadataName) {
     let {model} = this.props;
+    const requestId = ++this.metadataPreviewRequestId;
     this.setState({
       showMetadataModal: true,
       metadataXmlContent: "Loading...",
+      metadataPreviewLoading: true,
       metadataFileName: metadataName,
       metadataType
     });
@@ -918,23 +946,23 @@ class App extends React.Component {
 
     model.spinFor(
       model.retrieveSingleMetadata(metadataType, metadataName).then(result => {
-        if (result && result.content) {
-          this.setState({
-            metadataXmlContent: result.content,
-            metadataFileName: metadataName,
-            metadataType
-          });
-        } else {
-          this.setState({
-            metadataXmlContent: "No content found",
-            metadataFileName: metadataName,
-            metadataType
-          });
+        if (requestId !== this.metadataPreviewRequestId) {
+          return;
         }
+        this.setState({
+          metadataPreviewLoading: false,
+          metadataXmlContent: result && result.content ? result.content : "No content found",
+          metadataFileName: metadataName,
+          metadataType
+        });
         model.didUpdate();
       }).catch(error => {
         console.error(error);
+        if (requestId !== this.metadataPreviewRequestId) {
+          return;
+        }
         this.setState({
+          metadataPreviewLoading: false,
           metadataXmlContent: "Error retrieving metadata: " + error.message,
           metadataFileName: metadataName,
           metadataType
@@ -944,8 +972,10 @@ class App extends React.Component {
     );
   }
   onCloseMetadataModal() {
+    this.metadataPreviewRequestId++;
     this.setState({
       showMetadataModal: false,
+      metadataPreviewLoading: false,
       metadataXmlContent: null,
       metadataFileName: null,
       metadataType: null
@@ -1019,24 +1049,32 @@ class App extends React.Component {
           onCopy: this.onCopyMetadataXml,
           copyLabel: "Copy",
           copyIconName: "symbols.svg#copy",
+          copyButtonClass: "slds-button slds-button_neutral metadata-preview-action",
           onConfirm: this.onDownloadMetadataXml,
           confirmLabel: "Download",
           confirmIconName: "symbols.svg#download",
+          confirmButtonClass: "slds-button slds-button_brand metadata-preview-action",
           cancelLabel: "Close",
           modalSize: "large",
-          children: h("div", {className: "slds-scrollable_y"},
-            h("pre", {className: "reset-margin"},
-              h("code", {
-                id: "metadata-xml-content",
-                className: "language-" + (this.getLanguageForMetadata(this.state.metadataType))
-              }, this.state.metadataXmlContent || "")
+          children: this.state.metadataPreviewLoading
+            ? h("div", {className: "metadata-preview-loading", "aria-live": "polite"},
+              h(Spinner, {size: "medium", type: "brand", text: "Loading metadata...", className: "slds-spinner_inline"}),
+              h("span", {className: "slds-text-body_regular"}, "Loading metadata...")
             )
-          )
+            : h("div", {className: "slds-scrollable_y"},
+              h("pre", {className: "reset-margin"},
+                h("code", {
+                  id: "metadata-xml-content",
+                  className: "language-" + (this.getLanguageForMetadata(this.state.metadataType))
+                }, this.state.metadataXmlContent || "")
+              )
+            )
         }),
         h(PageHeader, {
           pageTitle: model.title(),
           settingsTab: "metadata",
           subTitle: model.progress == "ready" ? "Ready"
+          : model.progress == "loading" ? "Loading metadata types..."
           : model.progress == "working" ? "Retrieving metadata..."
           : model.progress == "deploying" ? "Deploying metadata..."
           : model.progress == "done" ? "Finished"
@@ -1047,14 +1085,14 @@ class App extends React.Component {
           spinnerCount: model.spinnerCount,
           ...model.userInfoModel.getProps()
         }),
-        ((model.progress == "working" || model.progress == "deploying") || model.spinnerCount > 0)
+        (model.progress == "working" || model.progress == "deploying")
         && h("div", {
           className: "sfir-spinner-overlay"
         },
         h(Spinner, {
           size: "large",
           type: "brand",
-          text: model.progress == "working" ? "Retrieving metadata..." : (model.progress == "deploying" ? "Deploying metadata..." : "Loading..."),
+          text: model.progress == "working" ? "Retrieving metadata..." : "Deploying metadata...",
           centered: false
         })
         ),
@@ -1070,13 +1108,13 @@ class App extends React.Component {
           h("div", {className: "result-bar"},
             h("h1", {className: "slds-text-title_bold"}, "Metadata"),
             h("span", {className: "slds-assistive-text"}, "Select what to download below, and then click the Retrieve Metadata button. If downloading fails, try unchecking some of the boxes."),
-            h("div", {className: "filter-box"},
-              h("svg", {className: "filter-icon"},
+            h("div", {className: "filter-box slds-form-element__control slds-input-has-icon slds-input-has-icon_left-right"},
+              h("svg", {className: "slds-input__icon slds-input__icon_left filter-icon", "aria-hidden": "true"},
                 h("use", {xlinkHref: "symbols.svg#search"})
               ),
-              h("input", {className: "filter-input", disabled: model.metadataObjects?.length == 0, placeholder: "Filter", value: model.metadataFilter, onChange: this.onMetadataFilterInput, ref: "metadataFilter"}),
-              h("a", {href: "about:blank", className: "filter-clear", title: "Clear filter", onClick: this.onClearAndFocusFilter},
-                h("svg", {className: "filter-clear-icon"},
+              h("input", {className: "slds-input filter-input", "aria-label": "Filter metadata", disabled: model.metadataObjects?.length == 0, placeholder: "Filter", value: model.metadataFilter, onChange: this.onMetadataFilterInput, ref: "metadataFilter"}),
+              h("button", {type: "button", className: "slds-button slds-button_icon slds-input__icon slds-input__icon_right filter-clear", title: "Clear filter", "aria-label": "Clear filter", onClick: this.onClearAndFocusFilter},
+                h("svg", {className: "slds-button__icon", "aria-hidden": "true"},
                   h("use", {xlinkHref: "symbols.svg#clear"})
                 )
               )
@@ -1100,6 +1138,8 @@ class App extends React.Component {
             ),
             h("div", {className: "flex-right"},
               h("button", {
+                type: "button",
+                className: "slds-button slds-button_brand",
                 onClick: this.onStartClick,
                 disabled: !model.deployRequestId && (!model.metadataObjects || !model.metadataObjects.some(obj => obj.selected))
               }, "Retrieve Metadata"),
@@ -1215,10 +1255,9 @@ class App extends React.Component {
             model.metadataObjects
               ? h("div", {className: "result slds-grid"},
                 h("div", {className: "slds-col"},
-                  h("br", {}),
-                  h("ul", {className: "slds-accordion"},
+                  h("ul", {className: "slds-accordion metadata-accordion"},
                     model.metadataObjects.map(metadataObject => h(ObjectSelector, {metadataObject, model, onViewMetadata: this.onViewMetadata, key: metadataObject.xmlName}))),
-                  !model.deployRequestId ? h("p", {}, "Select what to download above, and then click the button below. If downloading fails, try unchecking some of the boxes.") : null
+                  !model.deployRequestId && model.progress != "loading" ? h("p", {}, "Select what to download above, and then click the button below. If downloading fails, try unchecking some of the boxes.") : null
                 ),
                 h("div", {className: "slds-col"},
                   h("pre", {className: "reset-margin"},
@@ -1242,18 +1281,7 @@ class ObjectSelector extends React.Component {
     this.onSelectMeta = this.onSelectMeta.bind(this);
     this.onSelectChild = this.onSelectChild.bind(this);
     this.onViewMetadataClick = this.onViewMetadataClick.bind(this);
-    this.onMouseEnter = this.onMouseEnter.bind(this);
-    this.onMouseLeave = this.onMouseLeave.bind(this);
     props.metadataObject.childXmlNames = [];
-    this.state = {
-      hoveredItem: null
-    };
-  }
-  onMouseEnter(item) {
-    this.setState({hoveredItem: item});
-  }
-  onMouseLeave() {
-    this.setState({hoveredItem: null});
   }
   onViewMetadataClick(e, metadataType, metadataName) {
     e.stopPropagation();
@@ -1455,6 +1483,11 @@ class ObjectSelector extends React.Component {
     if (meta.childXmlNames.length == 0 || model.deployRequestId || meta.childXmlNames[0].fullName == "*"){
 
       // Check if this metadata type should use REST API query
+      meta.loadingChildren = true;
+      const stopRowLoading = () => {
+        meta.loadingChildren = false;
+        model.didUpdate();
+      };
       if (this.shouldUseRestApiForList(meta.xmlName)) {
         model.spinFor(
           this.queryMetadataViaRest({
@@ -1463,7 +1496,7 @@ class ObjectSelector extends React.Component {
             objectName: "ProcessDefinition"
           }).then(records => {
             this.buildChildMetadataFromRest(model, meta, records, "DeveloperName", "TableEnumOrId");
-          })
+          }).finally(stopRowLoading)
         );
       } else {
         // Use standard listMetadata API
@@ -1490,7 +1523,7 @@ class ObjectSelector extends React.Component {
               });
               meta.childXmlNames.sort((a, b) => a[model.sortMetadataBy] > b[model.sortMetadataBy] ? 1 : a[model.sortMetadataBy] < b[model.sortMetadataBy] ? -1 : 0);
             }
-          })
+          }).finally(stopRowLoading)
         );
       }
     } else {
@@ -1502,64 +1535,68 @@ class ObjectSelector extends React.Component {
   render() {
     let {metadataObject} = this.props;
 
+    const renderRowSpinner = name => h("span", {className: "metadata-row-spinner"},
+      h(Spinner, {size: "small", type: "brand", text: "Loading " + name + " items"})
+    );
+
     const renderChildren = (children, parentXmlName, parentType) => {
       if (!children || children.length === 0) {
         return null;
       }
 
-      return h("ul", {className: "slds-accordion", key: parentXmlName + "_children"},
+      return h("ul", {className: "slds-accordion metadata-accordion", key: parentXmlName + "_children"},
         children.map(child => {
           const metadataType = child.type || parentType || metadataObject.xmlName;
           const metadataName = child.fullName;
-          const isHovered = this.state.hoveredItem === child.fullName;
           const itemKey = parentXmlName + "_li_" + child.fullName;
 
           return h("li", {key: itemKey, className: "slds-accordion__list-item", hidden: child.hidden},
             h("section", {className: child.expanded ? "slds-accordion__section slds-is-open" : "slds-accordion__section"},
               h("div", {
-                className: "slds-accordion__summary",
+                className: "slds-accordion__summary metadata-child-summary",
                 title: child.fullName,
-                onClick: (e) => this.onSelectChild(child, e),
-                onMouseEnter: () => !child.isFolder && this.onMouseEnter(child.fullName),
-                onMouseLeave: () => this.onMouseLeave(),
-                style: {position: "relative"}
+                tabIndex: -1,
+                onClick: (e) => this.onSelectChild(child, e)
               },
-              h("h4", {className: "slds-accordion__summary-heading"},
-                h("button", {
+              h("h4", {className: "slds-accordion__summary-heading metadata-child-summary-heading"},
+                // Only folders can expand, so leaf rows have no chevron (and no extra tab stop).
+                child.isFolder ? h("button", {
+                  type: "button",
                   "aria-controls": "accordion-details-" + child.fullName,
                   "aria-expanded": child.expanded,
-                  "aria-label": child.isFolder
-                    ? child.fullName + ", press Enter to " + (child.expanded ? "collapse" : "open") + " the list of " + child.fullName + " items"
-                    : child.fullName,
-                  // Leaf rows have no expand/collapse action of their own; the checkbox is the only
-                  // real control, so the button is pulled out of the tab order instead of being a
-                  // second (confusingly nested) stop for the same row.
-                  tabIndex: child.isFolder ? 0 : -1,
-                  className: "slds-button slds-button_reset slds-accordion__summary-action"
+                  "aria-label": child.fullName + ", press Enter to " + (child.expanded ? "collapse" : "open") + " the list of " + child.fullName + " items",
+                  className: "slds-button slds-button_reset slds-accordion__summary-action metadata-accordion-action"
                 },
-                child.isFolder ? h("svg", {className: "reset-transform slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left", "aria-hidden": "true"},
+                h("svg", {className: "slds-button__icon slds-button__icon_left", "aria-hidden": "true"},
                   h("use", {xlinkHref: "symbols.svg#" + (child.icon ? child.icon : "chevronright")})
+                )
                 ) : null,
-                h("input", {
-                  type: "checkbox",
-                  className: !child.isFolder ? "margin-grandchild metadata" : "metadata",
-                  checked: !!child.selected,
-                  "aria-label": child.isFolder ? "Select all items in " + child.fullName : "Select " + child.fullName,
-                  ref: (input) => {
-                    if (input) {
-                      input.indeterminate = !!child.indeterminate;
+                h("span", {className: "slds-checkbox metadata-selection-checkbox" + (!child.isFolder ? " margin-grandchild" : ""), onClick: (e) => e.stopPropagation()},
+                  h("input", {
+                    type: "checkbox",
+                    id: "metadata-" + itemKey,
+                    checked: !!child.selected,
+                    onChange: (e) => this.onSelectChild(child, e),
+                    "aria-label": child.isFolder ? "Select all items in " + child.fullName : "Select " + child.fullName,
+                    ref: (input) => {
+                      if (input) {
+                        input.indeterminate = !!child.indeterminate;
+                      }
                     }
-                  }
-                }),
+                  }),
+                  h("label", {className: "slds-checkbox__label", htmlFor: "metadata-" + itemKey},
+                    h("span", {className: "slds-checkbox_faux"}),
+                    h("span", {className: "slds-assistive-text"}, child.isFolder ? "Select all items in " + child.fullName : "Select " + child.fullName)
+                  )
+                ),
                 h("span", {
-                  className: "slds-text-body_small slds-accordion__summary-content",
+                  className: "slds-accordion__summary-content",
                   title: child.fullName,
                   style: {display: "inline-flex", alignItems: "center", gap: "0.5rem"}
                 },
                 child.fullName + (child.expanded ? " (" + child.childXmlNames.length + ")" : ""),
-                !child.isFolder && isHovered && !metadataType.toLowerCase().includes("bundle") && h("svg", {
-                  className: "slds-icon slds-icon_x-small slds-icon-text-default",
-                  style: {cursor: "pointer", flexShrink: 0},
+                !child.isFolder && !metadataType.toLowerCase().includes("bundle") && h("svg", {
+                  className: "slds-icon slds-icon_x-small slds-icon-text-default metadata-preview-icon",
                   viewBox: "0 0 52 52",
                   onClick: (e) => this.onViewMetadataClick(e, metadataType, metadataName),
                   title: "View metadata"
@@ -1567,8 +1604,8 @@ class ObjectSelector extends React.Component {
                 h("use", {xlinkHref: "symbols.svg#preview"})
                 )
                 )
-                )
-              )
+              ),
+              child.loadingChildren && renderRowSpinner(child.fullName)
               ),
               child.expanded && h("div", {className: "slds-accordion__content", id: "accordion-details-" + child.fullName},
                 renderChildren(child.childXmlNames, child.fullName, metadataType)
@@ -1579,45 +1616,53 @@ class ObjectSelector extends React.Component {
       );
     };
 
-    const isHovered = this.state.hoveredItem === metadataObject.xmlName;
     return h("li", {className: "slds-accordion__list-item", hidden: metadataObject.hidden, key: metadataObject.xmlName},
       h("section", {className: metadataObject.expanded ? "slds-accordion__section slds-is-open" : "slds-accordion__section"},
         h("div", {
           className: "slds-accordion__summary",
           title: metadataObject.xmlName,
+          tabIndex: -1,
           onClick: (event) => { this.onSelectMeta(event); }
         },
         h("h3", {className: "slds-accordion__summary-heading"},
           h("button", {
+            type: "button",
             "aria-controls": "accordion-details-" + metadataObject.xmlName,
             "aria-expanded": metadataObject.expanded,
             "aria-label": metadataObject.xmlName + ", press Enter to " + (metadataObject.expanded ? "collapse" : "open") + " the list of " + metadataObject.xmlName + " items",
-            className: "slds-button slds-button_reset slds-accordion__summary-action"
+            className: "slds-button slds-button_reset slds-accordion__summary-action metadata-accordion-action"
           },
-          h("svg", {className: "reset-transform slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left", "aria-hidden": "true"},
+          h("svg", {className: "slds-button__icon slds-button__icon_left", "aria-hidden": "true"},
             h("use", {xlinkHref: "symbols.svg#" + (metadataObject.icon ? metadataObject.icon : "chevronright")})
+          )
           ),
-          h("input", {
-            type: "checkbox",
-            className: "metadata",
-            checked: !!metadataObject.selected,
-            onChange: this.onChange,
-            key: metadataObject.xmlName,
-            "aria-label": "Select all " + metadataObject.xmlName,
-            ref: (input) => {
-              if (input) {
-                input.indeterminate = !!metadataObject.indeterminate;
+          h("span", {className: "slds-checkbox metadata-selection-checkbox", onClick: (e) => e.stopPropagation()},
+            h("input", {
+              type: "checkbox",
+              id: "metadata-" + metadataObject.xmlName,
+              checked: !!metadataObject.selected,
+              onChange: this.onChange,
+              key: metadataObject.xmlName,
+              "aria-label": "Select all " + metadataObject.xmlName,
+              ref: (input) => {
+                if (input) {
+                  input.indeterminate = !!metadataObject.indeterminate;
+                }
               }
-            }
-          }),
+            }),
+            h("label", {className: "slds-checkbox__label", htmlFor: "metadata-" + metadataObject.xmlName},
+              h("span", {className: "slds-checkbox_faux"}),
+              h("span", {className: "slds-assistive-text"}, "Select all " + metadataObject.xmlName)
+            )
+          ),
           h("span", {
             className: "slds-accordion__summary-content",
             title: metadataObject.xmlName
           },
           metadataObject.xmlName + (metadataObject.expanded ? " (" + metadataObject.childXmlNames.length + ")" : "")
           )
-          )
-        )
+        ),
+        metadataObject.loadingChildren && renderRowSpinner(metadataObject.xmlName)
         ),
         metadataObject.expanded && h("div", {className: "slds-accordion__content", id: "accordion-details-" + metadataObject.xmlName},
           renderChildren(metadataObject.childXmlNames, metadataObject.xmlName, metadataObject.xmlName)
