@@ -1682,23 +1682,27 @@ export class App extends React.Component {
       showBulkHistory: false
     };
   }
-  onApiTypeChange(e) {
+  onApiTypeChange(val) {
     let {model} = this.props;
-    model.apiType = e.target.value;
+    model.apiType = val;
     // Reset the panel override so it goes back to following the API type.
     this.setState({bulkPanelOpen: null});
     model.updateAvailableActions();
     model.importAction = model.availableActions[0].value;
     model.importActionName = allActions.find(action => action.value == model.importAction).label;
+    if (model.batchSizeBeforeUpdateOnly != null) { // first action is never upsertUpdateOnly
+      model.batchSize = model.batchSizeBeforeUpdateOnly;
+      model.batchSizeBeforeUpdateOnly = null;
+    }
     model.updateImportTableResult();
     model.didUpdate();
   }
-  onImportActionChange(e) {
+  onImportActionChange(val) {
     let {model} = this.props;
-    model.importAction = e.target.value;
-    model.importActionName = e.target.options[e.target.selectedIndex].text;
+    model.importAction = val;
+    model.importActionName = model.availableActions.find(a => a.value === val)?.label ?? val;
     model.importActionSelected = true;
-    if (model.importAction === "undelete"){
+    if (model.importAction === "undelete") {
       this.onImportUndelete(model);
     }
     if (model.importAction === "upsertUpdateOnly") {
@@ -2191,20 +2195,7 @@ export class App extends React.Component {
                           h("div", {className: "slds-form-element "},
                             h("label", {className: "slds-form-element__label", htmlFor: "form-api-type", title: "With the tooling API you can import more metadata, but you cannot import regular data. With the metadata API you can import custom metadata types."}, "API Type"),
                             h("div", {className: "slds-form-element__control"},
-                              h(Combobox, {
-                                id: "form-api-type",
-                                options: allApis,
-                                value: model.apiType,
-                                disabled: model.isWorking(),
-                                onChange: (val) => {
-                                  model.apiType = val;
-                                  model.updateAvailableActions();
-                                  model.importAction = model.availableActions[0].value;
-                                  model.importActionName = allActions.find(action => action.value == model.importAction).label;
-                                  model.updateImportTableResult();
-                                  model.didUpdate();
-                                }
-                              })
+                              h(Combobox, {id: "form-api-type", options: allApis, value: model.apiType, disabled: model.isWorking(), onChange: this.onApiTypeChange}),
                             )
                           )
                         ),
@@ -2212,23 +2203,7 @@ export class App extends React.Component {
                           h("div", {className: "slds-form-element "},
                             h("label", {className: "slds-form-element__label", htmlFor: "form-import-action"}, "Action"),
                             h("div", {className: "slds-form-element__control"},
-                              h(Combobox, {
-                                id: "form-import-action",
-                                options: model.availableActions,
-                                value: model.importAction,
-                                disabled: model.isWorking(),
-                                dropdownHeight: "222px",
-                                onChange: (val) => {
-                                  model.importAction = val;
-                                  let selectedActionObj = model.availableActions.find(a => a.value === val);
-                                  model.importActionName = selectedActionObj ? selectedActionObj.label : val;
-                                  model.importActionSelected = true;
-                                  if (model.importAction === "undelete") {
-                                    this.onImportUndelete(model);
-                                  }
-                                  model.didUpdate();
-                                }
-                              }),
+                              h(Combobox, {id: "form-import-action", options: model.availableActions, value: model.importAction, disabled: model.isWorking(), dropdownHeight: "222px", onChange: this.onImportActionChange}),
                               h("div", {id: "error-import-action", className: "slds-form-element__help slds-text-color_error slds-m-left_none", hidden: !model.upsertUpdateOnlyApiVersionError()}, model.upsertUpdateOnlyApiVersionError())
                             )
                           )
