@@ -7,6 +7,12 @@ import {UserInfoModel, createSpinForMethod, getSobjectsList, Constants, applyPro
 
 let h = React.createElement;
 
+const isSupportedObject = obj => obj?.name && (
+  obj.layoutable === true
+  || (obj.keyPrefix && obj.keyPrefix.startsWith("e"))
+  || obj.name.endsWith("__mdt")
+);
+
 const FIELD_TYPES = [
   "Checkbox", "Currency", "Date", "DateTime", "Email", "Location", "Number",
   "Percent", "Phone", "Picklist", "MultiselectPicklist", "Text", "TextArea",
@@ -1253,7 +1259,7 @@ class App extends React.Component {
     this.onSobjectsListRefreshed = (e) => {
       if (e.detail?.sfHost === this.sfHost) {
         const layoutableObjects = e.detail.sobjectsList.filter(obj =>
-          obj.layoutable === true || (obj.keyPrefix && obj.keyPrefix.startsWith("e")) || obj.name.endsWith("__mdt")
+          isSupportedObject(obj)
         );
         this.setState({objects: layoutableObjects});
       }
@@ -1281,13 +1287,13 @@ class App extends React.Component {
 
         // Then filter by search term
         return obj.name.toLowerCase().includes(searchTerm)
-          || obj.label.toLowerCase().includes(searchTerm);
+          || (obj.label || "").toLowerCase().includes(searchTerm);
       })
       .sort((a, b) => {
         const aName = a.name.toLowerCase();
         const bName = b.name.toLowerCase();
-        const aLabel = a.label.toLowerCase();
-        const bLabel = b.label.toLowerCase();
+        const aLabel = (a.label || "").toLowerCase();
+        const bLabel = (b.label || "").toLowerCase();
 
         // Helper function to calculate match score
         const getMatchScore = (str) => {
@@ -1546,7 +1552,7 @@ class App extends React.Component {
 
       // Filter for layoutable objects (objects that can have layouts), platform events, and custom metadata types
       const layoutableObjects = sobjectsList.filter(obj =>
-        obj.layoutable === true || (obj.keyPrefix && obj.keyPrefix.startsWith("e")) || obj.name.endsWith("__mdt")
+        isSupportedObject(obj)
       );
 
       this.setState({objects: layoutableObjects});
