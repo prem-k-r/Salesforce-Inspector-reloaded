@@ -4,7 +4,7 @@ import {sfConn, apiVersion} from "./inspector.js";
 import {csvParse} from "./csv-parse.js";
 import {DescribeInfo, initScrollTable} from "./data-load.js";
 import {PageHeader} from "./components/PageHeader.js";
-import Toast, {copyWithToast, downloadWithToast, hideToast} from "./components/Toast.js";
+import Toast, {copyWithToast, downloadWithToast, hideToast, showToast} from "./components/Toast.js";
 import {UserInfoModel, createSpinForMethod, copyToClipboard, getSobjectsList, Constants, applyProductionStyling, downloadCsvFile, BulkJobStore, BULK_STATE, BULK_MAX_UPLOAD_BYTES, isBulkJobTerminal, utf8ByteLength} from "./utils.js";
 import {Combobox} from "./components/Combobox.js";
 
@@ -1731,6 +1731,7 @@ export class App extends React.Component {
   onDataPaste(e) {
     let {model} = this.props;
     let text = e.clipboardData.getData("text/plain");
+    let wasWorking = model.isWorking();
     model.uploadSeq = (model.uploadSeq || 0) + 1; // Invalidate any file read still in flight.
     model.workbook = null;
     model.availableSheets = null;
@@ -1738,6 +1739,9 @@ export class App extends React.Component {
     model.uploadedFileName = null;
     model.fileSizeWarning = "";
     model.setData(text);
+    if (!wasWorking && !model.dataError) {
+      showToast(this, "success", "Data pasted", "Loaded into the import table");
+    }
     model.didUpdate();
   }
   onSheetChange(e) {
