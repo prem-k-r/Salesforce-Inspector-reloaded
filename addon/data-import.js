@@ -4,6 +4,7 @@ import {sfConn, apiVersion} from "./inspector.js";
 import {csvParse} from "./csv-parse.js";
 import {DescribeInfo, initScrollTable} from "./data-load.js";
 import {PageHeader} from "./components/PageHeader.js";
+import Toast, {copyWithToast, downloadWithToast, hideToast} from "./components/Toast.js";
 import {UserInfoModel, createSpinForMethod, copyToClipboard, getSobjectsList, Constants, applyProductionStyling, downloadCsvFile, BulkJobStore, BULK_STATE, BULK_MAX_UPLOAD_BYTES, isBulkJobTerminal, utf8ByteLength} from "./utils.js";
 import {Combobox} from "./components/Combobox.js";
 
@@ -396,7 +397,7 @@ export class Model {
     if (this.importAction == "upsert" || this.importAction == "upsertUpdateOnly") importOptions.set("externalId", this.externalId);
     importOptions.set("batchSize", this.batchSize);
     importOptions.set("threads", this.batchConcurrency);
-    copyToClipboard(importOptions.toString());
+    return copyToClipboard(importOptions.toString());
   }
 
   skipAllUnknownFields() {
@@ -644,7 +645,7 @@ export class Model {
   copyResult(separator) {
     let header = this.importData.importTable.header.map(c => c.columnValue);
     let data = this.importData.taggedRows.filter(row => this.showStatus[row.status]).map(row => row.cells);
-    copyToClipboard(csvSerialize([header, ...data], separator));
+    return copyToClipboard(csvSerialize([header, ...data], separator));
   }
 
   downloadResult(separator) {
@@ -1661,6 +1662,7 @@ export class App extends React.Component {
     this.onCopyAsCsvClick = this.onCopyAsCsvClick.bind(this);
     this.onDownloadAsCsvClick = this.onDownloadAsCsvClick.bind(this);
     this.onCopyOptionsClick = this.onCopyOptionsClick.bind(this);
+    this.dismissToast = this.dismissToast.bind(this);
     this.onSkipAllUnknownFieldsClick = this.onSkipAllUnknownFieldsClick.bind(this);
     this.onConfirmPopupYesClick = this.onConfirmPopupYesClick.bind(this);
     this.onConfirmPopupNoClick = this.onConfirmPopupNoClick.bind(this);
@@ -1679,8 +1681,12 @@ export class App extends React.Component {
       // null means "follow the selected API type"; a boolean is an explicit
       // choice by the user, which holds until the API type changes again.
       bulkPanelOpen: null,
-      showBulkHistory: false
+      showBulkHistory: false,
+      toast: null
     };
+  }
+  dismissToast() {
+    hideToast(this);
   }
   onApiTypeChange(val) {
     let {model} = this.props;
@@ -1842,7 +1848,7 @@ export class App extends React.Component {
   onCopyAsExcelClick(e) {
     e.preventDefault();
     let {model} = this.props;
-    model.copyResult("\t");
+    copyWithToast(this, () => model.copyResult("\t"));
   }
   onCopyAsCsvClick(e) {
     e.preventDefault();
@@ -1851,7 +1857,7 @@ export class App extends React.Component {
     if (localStorage.getItem("csvSeparator")) {
       separator = localStorage.getItem("csvSeparator");
     }
-    model.copyResult(separator);
+    copyWithToast(this, () => model.copyResult(separator));
   }
   onDownloadAsCsvClick(e) {
     e.preventDefault();
@@ -1860,12 +1866,12 @@ export class App extends React.Component {
     if (localStorage.getItem("csvSeparator")) {
       separator = localStorage.getItem("csvSeparator");
     }
-    model.downloadResult(separator);
+    downloadWithToast(this, () => model.downloadResult(separator));
   }
   onCopyOptionsClick(e) {
     e.preventDefault();
     let {model} = this.props;
-    model.copyOptions();
+    copyWithToast(this, () => model.copyOptions());
   }
   onSkipAllUnknownFieldsClick(e) {
     e.preventDefault();
@@ -2169,6 +2175,14 @@ export class App extends React.Component {
     ];
 
     return h("div", {onDrop: this.onDataDrop, onDragOver: this.onDataDragOver},
+      this.state.toast && h(Toast, {
+        key: this.state.toast.id,
+        variant: this.state.toast.variant,
+        title: this.state.toast.title,
+        message: this.state.toast.message,
+        onClose: this.dismissToast,
+        duration: this.state.toast.duration,
+      }),
       h(PageHeader, {
         pageTitle: "Data Import",
         settingsTab: "data-import",

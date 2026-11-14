@@ -3,6 +3,7 @@ import {sfConn, apiVersion} from "./inspector.js";
 /* global initButton */
 import {initScrollTable} from "./data-load.js";
 import {PageHeader} from "./components/PageHeader.js";
+import Toast, {copyWithToast, hideToast, showToast} from "./components/Toast.js";
 import {Combobox} from "./components/Combobox.js";
 import {UserInfoModel, createSpinForMethod, createChangeGuard, copyToClipboard, isOptionEnabled, StorageHistory} from "./utils.js";
 
@@ -159,7 +160,7 @@ class Model {
     this.queryHistory.clear();
   }
   copyAsJson() {
-    copyToClipboard(this.apiResponse.value, null, "  ");
+    return copyToClipboard(this.apiResponse.value, null, "  ");
   }
   clear() {
     this.apiResponse.value = "";
@@ -423,7 +424,9 @@ class App extends React.Component {
     this.onSetEndpoint = this.onSetEndpoint.bind(this);
     this.onToggleHeadersEditor = this.onToggleHeadersEditor.bind(this);
     this.onUpdateHeaders = this.onUpdateHeaders.bind(this);
+    this.dismissToast = this.dismissToast.bind(this);
     this.highlightGuard = createChangeGuard();
+    this.state = {toast: null};
   }
   onSelectEntry(val, list) {
     let {model} = this.props;
@@ -481,6 +484,7 @@ class App extends React.Component {
     e.preventDefault();
     let {model} = this.props;
     model.addToHistory();
+    showToast(this, "success", "Saved", "Query saved successfully");
     model.didUpdate();
   }
   onRemoveFromHistory(e) {
@@ -516,8 +520,11 @@ class App extends React.Component {
   }
   onCopyAsJson() {
     let {model} = this.props;
-    model.copyAsJson();
+    copyWithToast(this, () => model.copyAsJson());
     model.didUpdate();
+  }
+  dismissToast() {
+    hideToast(this);
   }
   onClearResponse() {
     let {model} = this.props;
@@ -620,6 +627,14 @@ class App extends React.Component {
   render() {
     let {model} = this.props;
     return h("div", {},
+      this.state.toast && h(Toast, {
+        key: this.state.toast.id,
+        variant: this.state.toast.variant,
+        title: this.state.toast.title,
+        message: this.state.toast.message,
+        onClose: this.dismissToast,
+        duration: this.state.toast.duration,
+      }),
       h(PageHeader, {
         pageTitle: "REST Explorer",
         settingsTab: "rest-explore",

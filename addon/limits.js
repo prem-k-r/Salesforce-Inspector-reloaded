@@ -1,6 +1,7 @@
 /* global React ReactDOM */
 import {sfConn, apiVersion} from "./inspector.js";
 import {PageHeader} from "./components/PageHeader.js";
+import Toast, {copyWithToast, hideToast} from "./components/Toast.js";
 import {Combobox} from "./components/Combobox.js";
 import {UserInfoModel, copyToClipboard} from "./utils.js";
 /* global initButton */
@@ -94,7 +95,7 @@ class Model {
   }
 
   copyAsJson() {
-    copyToClipboard(JSON.stringify(this.allLimitData ? this.allLimitData : this.allLimitData, null, "    "), null, "  ");
+    return copyToClipboard(JSON.stringify(this.allLimitData ? this.allLimitData : this.allLimitData, null, "    "), null, "  ");
   }
 
   sortLimits(data, sortBy) {
@@ -173,11 +174,16 @@ class App extends React.Component {
     this.onRefreshLimits = this.onRefreshLimits.bind(this);
     this.onClearSearch = this.onClearSearch.bind(this);
     this.searchInput = null;
+    this.dismissToast = this.dismissToast.bind(this);
+    this.state = {toast: null};
   }
 
   onCopyAsJson() {
-    this.model.copyAsJson();
+    copyWithToast(this, () => this.model.copyAsJson());
     this.model.didUpdate();
+  }
+  dismissToast() {
+    hideToast(this);
   }
   onSortBy(val) {
     this.model.sortBy = this.model.sortOptions.find(opt => opt.value === val) || this.model.sortOptions[1];
@@ -211,6 +217,14 @@ class App extends React.Component {
       !searchQuery || limit.label.toLowerCase().includes(searchQuery) || limit.key.toLowerCase().includes(searchQuery)
     );
     return h("div", {},
+      this.state.toast && h(Toast, {
+        key: this.state.toast.id,
+        variant: this.state.toast.variant,
+        title: this.state.toast.title,
+        message: this.state.toast.message,
+        onClose: this.dismissToast,
+        duration: this.state.toast.duration,
+      }),
       h(PageHeader, {
         pageTitle: "Org Limits",
         orgName: model.orgName,
