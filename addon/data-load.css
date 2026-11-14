@@ -134,3 +134,7 @@ button[hidden] {
 .slds-textarea[disabled]::placeholder {
   color: var(--slds-s-input-color-disabled, var(--slds-g-color-on-surface-1));
 }
+
+.slds-form-element__control .slds-input {
+  padding-inline-start: var(--slds-g-spacing-3);
+}

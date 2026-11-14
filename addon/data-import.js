@@ -1739,10 +1739,33 @@ export class App extends React.Component {
     model.uploadedFileName = null;
     model.fileSizeWarning = "";
     model.setData(text);
-    if (!wasWorking && !model.dataError) {
-      showToast(this, "success", "Data pasted", "Loaded into the import table");
+    if (!wasWorking) {
+      if (model.dataError) {
+        showToast(this, "error", "Pasted data could not be loaded", "Error: " + model.dataError);
+      } else {
+        let count = model.importData.importTable?.data?.length;
+        showToast(this, "success", "Data pasted", count ? count + (count === 1 ? " record" : " records") + " loaded into the import table" : "Loaded into the import table", 3000);
+      }
     }
     model.didUpdate();
+  }
+  loadFileWithToast(file) {
+    let {model} = this.props;
+    let wasWorking = model.isWorking();
+    let seq = model.beginFileUpload(file);
+    model.didUpdate();
+    model.loadFile(file, seq).then(() => {
+      if (!wasWorking && seq === model.uploadSeq) {
+        if (model.dataError) {
+          showToast(this, "error", "File could not be loaded", "Error: " + model.dataError);
+        } else {
+          let count = model.importData.importTable?.data?.length;
+          let records = count ? count + (count === 1 ? " record" : " records") + " from " : "";
+          showToast(this, "success", "File loaded", records + file.name, 3000);
+        }
+      }
+      model.didUpdate();
+    });
   }
   onSheetChange(e) {
     let {model} = this.props;
@@ -1750,16 +1773,13 @@ export class App extends React.Component {
     model.didUpdate();
   }
   onFileChange(e) {
-    let {model} = this.props;
     let file = e.target.files[0];
     // Allow selecting the same file again later (e.g. after fixing its content).
     e.target.value = null;
     if (!file) {
       return;
     }
-    let seq = model.beginFileUpload(file);
-    model.didUpdate();
-    model.loadFile(file, seq).then(() => model.didUpdate());
+    this.loadFileWithToast(file);
   }
   onDataDragOver(e) {
     if (e.dataTransfer.types && e.dataTransfer.types.includes("Files")) {
@@ -1771,14 +1791,11 @@ export class App extends React.Component {
       return;
     }
     e.preventDefault();
-    let {model} = this.props;
     let file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) {
       return;
     }
-    let seq = model.beginFileUpload(file);
-    model.didUpdate();
-    model.loadFile(file, seq).then(() => model.didUpdate());
+    this.loadFileWithToast(file);
   }
   onExternalIdChange(e) {
     let {model} = this.props;
@@ -2296,7 +2313,7 @@ export class App extends React.Component {
                             h("label", {className: "slds-form-element__label", htmlFor: "data-paste"}, "Data"),
                             h("div", {className: "slds-form-element__control"},
                               h("div", {className: "slds-grid slds-grid_vertical-align-center", style: {gap: "0.5rem"}},
-                                h("textarea", {id: "data-paste", "aria-describedby": "error-data-paste", value: model.uploadedFileName || "", placeholder: "Paste data here, or\nDrop a file", onPaste: this.onDataPaste, className: model.dataError ? "slds-textarea slds-has-error" : "slds-textarea", disabled: model.isWorking(), readOnly: true, rows: 2, style: {flex: "1 1 auto", minWidth: 0, resize: "none", boxSizing: "border-box", padding: "0.5rem"}}),
+                                h("textarea", {id: "data-paste", "aria-describedby": "error-data-paste", value: model.uploadedFileName || "", placeholder: "Paste data here, or\nDrop a file", onPaste: this.onDataPaste, className: model.dataError ? "slds-textarea slds-has-error" : "slds-textarea", disabled: model.isWorking(), readOnly: true, rows: 2, style: {flex: "1 1 auto", minWidth: 0, resize: "none", boxSizing: "border-box", padding: "0.5rem 0.75rem"}}),
                                 h("input", {type: "file", id: "data-file-input", accept: ".csv,.txt,.json,.xlsx,.xls", style: {display: "none"}, onChange: this.onFileChange, disabled: model.isWorking()}),
                                 h("label", {htmlFor: model.isWorking() ? undefined : "data-file-input", className: "slds-button slds-button_neutral data-file-choose-button", style: model.isWorking() ? {flex: "0 0 auto", opacity: 0.5, pointerEvents: "none", cursor: "not-allowed"} : {flex: "0 0 auto"}, title: "Choose a CSV, Excel (.xlsx/.xls), or JSON file"},
                                   h("svg", {className: "slds-button__icon slds-button__icon_left"}, h("use", {xlinkHref: "symbols.svg#upload"})),
